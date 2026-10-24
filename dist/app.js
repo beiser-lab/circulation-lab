@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=interface-2';
+import { PhysiologyModel } from './model.js?v=interface-3';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=interface-2';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=interface-3';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -49,7 +49,7 @@ function updateMetrics(){
 }
 function makeBaseline(){
  const b=new PhysiologyModel(); baseline=[];
- for(let i=0;i<1200;i++){b.advance(.01);const s=b.snapshot();baseline.push(plotSample(s));}
+ for(let i=0;i<1000;i++){b.advance(.01);const s=b.snapshot();baseline.push(plotSample(s));}
  baselineState=b.snapshot();
 }
 function capture(){
@@ -69,20 +69,21 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
  const left=45,right=w-17,top=22,bottom=h-36;const X=x=>left+(x-xMin)/(xMax-xMin)*(right-left),Y=y=>bottom-(y-yMin)/(yMax-yMin)*(bottom-top);
  ctx.font='10px -apple-system, sans-serif';ctx.fillStyle=colors.text;ctx.strokeStyle=colors.grid;ctx.lineWidth=1;
- for(let i=0;i<=4;i++){let y=yMin+(yMax-yMin)*i/4;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);let x=xMin+(xMax-xMin)*i/4;ctx.textAlign='center';ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}
+ for(let i=0;i<=4;i++){let y=yMin+(yMax-yMin)*i/4;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);if(id!=='pressures'){let x=xMin+(xMax-xMin)*i/4;ctx.textAlign='center';ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}}
+ if(id==='pressures'){ctx.strokeStyle=colors.text;ctx.textAlign='center';for(let second=0;second<=10;second++){ctx.beginPath();ctx.moveTo(X(second),bottom);ctx.lineTo(X(second),bottom+(second%5===0?6:3));ctx.stroke();if(second%5===0)ctx.fillText(second,X(second),bottom+16);}}
  ctx.textAlign='left';ctx.fillText(yLabel,3,10);ctx.textAlign='center';ctx.fillText(xLabel,(left+right)/2,h-3);
  const line=(points,color,dashed=false)=>{ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle=color;ctx.lineWidth=dashed?1.2:1.8;ctx.globalAlpha=dashed?.4:1;ctx.setLineDash(dashed?[4,4]:[]);ctx.beginPath();let active=false;for(const p of points){if(!Number.isFinite(p.x)||!Number.isFinite(p.y)){active=false;continue;}if(!active){ctx.moveTo(X(p.x),Y(p.y));active=true;}else ctx.lineTo(X(p.x),Y(p.y));}ctx.stroke();ctx.restore();};
  const dot=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))return;ctx.fillStyle='#193944';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(x),Y(y),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();};
  return {line,dot};
 }
 function draw(){
- const overlay=$('overlay').checked;const end=Math.max(12,state.time),start=end-12;
+ const overlay=$('overlay').checked;const end=Math.max(10,state.time),start=end-10;
  // Fixed axes preserve visual comparisons throughout every experiment.
  const pressureMax=180;
- const wave=chart('pressures',start,end,0,pressureMax,'Time (s)','Pressure (mmHg)');
+ const wave=chart('pressures',0,10,0,pressureMax,'Time (s)','Pressure (mmHg)');
  for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['laPressure',colors.venous]]){
- if(overlay)wave.line(baseline.map((s,i)=>({x:start+i*.01,y:s[key]})),color,true);
- wave.line(history.map(s=>({x:s.time,y:s[key]})),color);
+ if(overlay)wave.line(baseline.map((s,i)=>({x:i*.01,y:s[key]})),color,true);
+ wave.line(history.map(s=>({x:s.time-start,y:s[key]})),color);
  }
  const transmural=$('pv-pressure').value==='transmural';
  const maxVolume=250;
@@ -102,7 +103,7 @@ function draw(){
 function frame(now){
  const elapsed=Math.max(0,(now-previousFrame)/1000);previousFrame=now;
  if(running){let amount=elapsed*speed;while(amount>0){const dt=Math.min(.01,amount);model.advance(dt);amount-=dt;state=model.snapshot();capture();if(state.limit){running=false;break;}}
- const cutoff=state.time-12;while(history.length&&history[0].time<cutoff)history.shift();}
+ const cutoff=state.time-10;while(history.length&&history[0].time<cutoff)history.shift();}
  if(now-drawDue>=16){updateMetrics();draw();drawDue=now;}
  requestAnimationFrame(frame);
 }
