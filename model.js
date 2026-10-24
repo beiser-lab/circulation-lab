@@ -39,7 +39,7 @@ export class PhysiologyModel {
   stopIntervention(){this.intervention=null;}
   get bloodVolume(){return this.v.reduce((a,b)=>a+b,0);}
   get hr(){return 72+55*this.tone-8*this.vagalDrive;}
-  parameters(){return {v0:BASE_V0.map((v,i)=>i===3?v-450*this.tone:v),rs:1.05*(1+.85*this.tone),rv:.045,cp:1+0.55*this.tone};}
+  parameters(){return {v0:BASE_V0.map((v,i)=>i===3?v-450*this.tone:v),rs:.9*(1+.85*this.tone),rv:.045,cp:1+0.55*this.tone};}
   aorticClosurePressure(){
     if(this.aorticClosureTime===null)return 0;
     const age=this.time-this.aorticClosureTime;
