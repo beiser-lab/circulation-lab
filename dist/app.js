@@ -1,16 +1,16 @@
-import { PhysiologyModel } from './model.js?v=lab-3';
+import { PhysiologyModel } from './model.js?v=calibration-1';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=lab-3';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=calibration-1';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
 const specs = [
  ['hr','Heart rate','beats/min',0], ['sbp','Systolic pressure','mmHg',0], ['dbp','Diastolic pressure','mmHg',0], ['map','Mean arterial pressure','mmHg',0],
- ['co','Cardiac output','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
- ['pms','Mean systemic filling pressure','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['pericardialPressure','Pericardial pressure','mmHg',1],
+ ['co','Cardiac output','L/min',2], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
+ ['pms','Mean systemic filling pressure','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
  ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
 ];
-const selected = new Set([...specs.slice(0,12).map(x=>x[0]),'lvedpTransmural']);
+const selected = new Set([...specs.slice(0,12).map(x=>x[0])]);
 let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
 const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
@@ -26,9 +26,10 @@ function renderMetrics(){
 }
 function updateMetrics(){
  for(const [k,, ,d] of specs){const el=document.querySelector(`[data-metric="${k}"]`);if(el)el.textContent=fmt(state[k],d);}
+ const tamponade=state.effusionVolume>1.1||['pericardial','drainage'].includes($('intervention').value);$('pv-pressure-control').hidden=!tamponade;if(!tamponade)$('pv-pressure').value='intracavitary';
  const t=state.time; $('clock').textContent=`${String(Math.floor(t/60)).padStart(2,'0')}:${(t%60).toFixed(1).padStart(4,'0')}`;
  $('status').textContent=state.limit ? 'Model boundary reached' : running ? (speed===1?'Running · Real time (1×)':`Running · Accelerated (${speed}×)`) : 'Simulation paused';
- $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'frozen at current tone'} · Parasympathetic feedback ${state.vagalFeedbackEnabled?'active':'frozen at current tone'}.`;
+ $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'clamped at current tone'} · Parasympathetic feedback ${state.vagalFeedbackEnabled?'active':'clamped at current tone'}.`;
  $('run').textContent=running?'Ⅱ Pause experiment':'▶ Run experiment';
  $('warning').hidden=!state.limit; $('warning').textContent=state.limit || '';
  if(deliverySpec){
@@ -46,7 +47,7 @@ function capture(){
  history.push(plotSample(state));
  if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
-function reset(){running=false;model.reset();model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
+function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-stiffness').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
  if(!Number.isFinite(volumeMl)||volumeMl<=0||volumeMl>5000||!Number.isFinite(rateMlMin)||rateMlMin<=0||rateMlMin>10000){$('delivery').textContent='Use a volume above 0 and at most 5,000 mL; rate must be 1–10,000 mL/min.';return;}
  deliverySpec={type,volumeMl,rateMlMin,startRemoved:state.removedBlood,startBlood:state.bloodVolume,startEffusion:state.effusionVolume};
@@ -96,6 +97,7 @@ function frame(now){
  if(now-drawDue>=16){updateMetrics();draw();drawDue=now;}
  requestAnimationFrame(frame);
 }
+for(const [id,setter] of [['lv-function','setLVFunction'],['lv-stiffness','setLVStiffness']])$(id).addEventListener('change',e=>{model[setter](Number(e.target.value));state=model.snapshot();updateMetrics();draw();});
 $('run').addEventListener('click',()=>{running=!running;previousFrame=performance.now();updateMetrics();});
 $('reset').addEventListener('click',reset);
 $('speed').addEventListener('change',e=>{speed=Number(e.target.value);previousFrame=performance.now();updateMetrics();});

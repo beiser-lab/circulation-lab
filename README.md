@@ -4,9 +4,9 @@ Browser-based cardiovascular physiology teaching prototype for hemorrhage and ca
 
 ## Status
 
-Experimental and quantitatively uncalibrated. This independent implementation is not a validated replacement for SimBioSys and is not for patient care. The current version supports volume interventions, independent sympathetic/vagal freezing, live pressure traces, PV loops, illustrative Guyton curves, and CSV export.
+Experimental teaching model with an initial calibration against selected classroom observations. Supports volume interventions, independent Active/Clamped autonomic controls, LV systolic function and stiffness controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
 
-Current plots include intrinsic diastolic and maximum-activation systolic PV reference curves and a provisional dicrotic notch. Recovery of original SimBioSys equations, further numerical-display consistency, and quantitative calibration remain outstanding.
+See [CALIBRATION.md](CALIBRATION.md) for equations, measurement conventions, fitting/validation scope, and remaining differences. Severe hemorrhage and severe LV dysfunction remain approximate. Guided clinical cases and exercise are subsequent work.
 
 ## Development
 
@@ -37,18 +37,12 @@ Phoenix Maroon (#800000), white, and greys follow the UChicago primary color pal
 
 This repository contains only the independent web application and its tests. Original SimBioSys binaries, reverse-engineering artifacts, lab answer keys, and private teaching files are excluded. No reuse license has yet been selected.
 
-### Guyton teaching convention
+### Display conventions
 
-RVR is fixed at 1 mmHg·min/L for the available non-exercise scenarios. Pms starts at 7 mmHg and changes with total circulating blood volume using a provisional effective reservoir compliance of 250 mL/mmHg, bounded at zero. This course-level curve approximation is separate from the pulsatile compartment solver; its slope is not inferred from instantaneous arterial resistance. Pericardial infusion alone does not shift the vascular curve. The cardiac approximation includes HR, contractility, afterload, and beat-averaged pericardial pressure. The dot is the intersection of the plotted curves (predicted equilibrium), not transient measured CO/CVP. Neither curve has yet been calibrated to the original model. Fixed plot limits: pressure 0–180 mmHg, LV volume 0–250 mL, Guyton flow 0–20 L/min and Pra −5–20 mmHg; out-of-range traces are clipped.
+Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve remains illustrative; the marker is its intersection with the vascular curve.
 
-### Dicrotic notch
+Pressure plots use 0–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–20 mmHg with flow 0–20 L/min. Curves outside these limits are clipped. Intracavitary LV pressure is shared by both plots; the optional transmural selector appears in pericardial experiments. PV references share the solver's pressure equations.
 
-Aortic valve closure is detected from the LV–aortic pressure gradient after ejection. It triggers a 140 ms damped dip/rebound in arterial pressure, scaled by ejected volume and bounded in amplitude. This pressure participates in arterial flow calculations, beat pressure measurements, and the displayed waveform; it is not a canvas-only decoration. The valve remains closed until the next cycle, preventing recoil-induced reopening. This is a provisional reduced closure/recoil approximation, not a recovered SimBioSys equation, fluid-inertance solver, or calibrated wave-reflection model. Tests verify a post-closure pressure minimum and rebound during isovolumic relaxation, mass conservation, decay, and existing timestep convergence checks.
+### Lab interventions
 
-The PV plot defaults to intracavitary LV pressure, using the exact same samples as the LV time trace. A selector provides transmural pressure (LV minus pericardial pressure). Current and previous beats are drawn separately; the previous beat is dashed. In intracavitary mode, reference curves are offset by beat-mean pericardial pressure. Its diastolic and systolic reference curves share the solver pressure equation; the systolic curve is a maximum-activation envelope, an ESPVR approximation. Sympathetic tone changes active elastance. Loading alone does not move the intrinsic curves. Injury is not yet an implemented intervention.
-
-### Lab protocol and initial parameter adjustment (24 October 2026)
-
-Presets target 200 or 400 mL total pericardial fluid (including 15 mL baseline). The handout does not resolve baseline-fluid semantics; this convention is explicit. Pericardial infusion uses an assumed 200 mL/min. Switching the custom intervention to pericardial fluid selects 200 mL, avoiding inheritance of a blood-loss volume. Hemorrhage starts with 500 mL at 10,000 mL/hour; subsequent lab withdrawals are 500 and 1,000 mL.
-
-Baseline systemic resistance was reduced from 1.05 to 0.90 mmHg·s/mL following an offline comparison across the recorded lab conditions. Baseline waveform-mean MAP/CO improve from approximately 100.2 mmHg/5.34 L/min to 89.3 mmHg/5.49 L/min, versus the recorded run's 87/5.5. This is partial calibration only: severe hemorrhage still produces unsupported low-output/negative-pressure results, and the model is not ready to reproduce the entire lab quantitatively. No answer keys or source manuals are published.
+Hemorrhage defaults to 500 mL at 10,000 mL/hour. Pericardial presets target 200 or 400 mL total, including the 1 mL baseline. Pericardial infusion uses an assumed 200 mL/min; custom volume means additional fluid. Large steps with active autonomics may require about two minutes to settle.

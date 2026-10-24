@@ -107,7 +107,7 @@ test('freezing both autonomic limbs holds heart rate through blood withdrawal', 
   const after = average(model);
   assert.equal(model.snapshot().reflexEnabled, false);
   assert.equal(model.snapshot().tone, baselineTone, 'autonomic tone must freeze at current value');
-  close(after.hr, baseline.hr, 0.01, 'frozen heart rate');
+  close(after.hr, baseline.hr, 0.15, 'clamped completed-beat heart rate');
 });
 
 test('1 L hemorrhage with frozen reflexes reduces filling pressure and output', () => {
@@ -245,19 +245,23 @@ test('freezing vagal feedback holds its current drive while sympathetic response
   assert.equal(model.snapshot().sympatheticFeedbackEnabled,true);
 });
 
-test('course vascular curve stays still across beats and pericardial infusion',()=>{
- const m=new PhysiologyModel(),base=m.snapshot();
- for(let i=0;i<100;i++){const s=m.advance(.02);close(s.pms,base.pms,1e-10,'stable Pms');assert.equal(s.rvr,base.rvr);}
- m.startIntervention({type:'pericardialInfusion',volumeMl:200,rateMlMin:600});
- const s=m.advance(20);close(s.pms,base.pms,1e-10,'unchanged blood volume');assert.equal(s.rvr,base.rvr);
+test('beat-averaged Pms avoids heartbeat oscillations, with positive modest RVR changes',()=>{
+ const m=new PhysiologyModel();m.setReflex(false);m.setVagalFeedback(false);m.advance(120);const base=m.snapshot();
+ const values=[];for(let i=0;i<100;i++)values.push(m.advance(.02).pms);
+ assert.ok(Math.max(...values)-Math.min(...values)<.05);
+ m.setReflex(true);m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:1000});
+ const s=m.advance(180);assert.ok(s.pms<base.pms);assert.ok(s.rvr>0);assert.ok(Math.abs(s.rvr/base.rvr-1)<.2);
 });
-test('blood volume shifts the vascular curve in parallel and marker lies on both curves',()=>{
- const m=new PhysiologyModel(),base=m.snapshot();
- m.startIntervention({type:'hemorrhage',volumeMl:500,rateMlMin:500});const s=m.advance(60);
- assert.ok(s.pms<base.pms);assert.equal(s.rvr,base.rvr);
- for(let i=0;i<s.guyton.venous.length;i++)close(s.guyton.venous[i].y-base.guyton.venous[i].y,(s.pms-base.pms)/s.rvr,1e-10,'parallel shift');
- for(const state of [base,s]){const p=state.guyton.intersection;assert.ok(p);close(p.y,(state.pms-p.x)/state.rvr,1e-10,'venous intersection');const c=state.guyton.cardiac,i=c.findIndex(q=>q.x>=p.x);const a=c[i-1],b=c[i];close(p.y,a.y+(b.y-a.y)*(p.x-a.x)/(b.x-a.x),1e-10,'cardiac intersection');}
- m.startIntervention({type:'bloodInfusion',volumeMl:500,rateMlMin:500});close(m.advance(60).pms,base.pms,1e-9,'volume restoration');
+test('Guyton marker lies on both curves and steady forward return has Pms above Pra',()=>{
+ const m=new PhysiologyModel();m.setReflex(false);
+ for(const target of [1,200,400]){
+ if(target>1){m.startIntervention({type:'pericardialInfusion',volumeMl:target-m.effusionVolume,rateMlMin:600});m.advance(180);}
+ const state=m.snapshot(),p=state.guyton.intersection;assert.ok(p);assert.ok(state.pms>state.cvp);assert.ok(state.rvr>0);
+ close(state.vr,(state.pms-state.cvp)/state.rvr,.1,'systemic steady return relation');
+ close(p.y,(state.pms-p.x)/state.rvr,1e-10,'venous intersection');
+ const c=state.guyton.cardiac,i=c.findIndex(q=>q.x>=p.x),a=c[i-1],b=c[i];
+ close(p.y,a.y+(b.y-a.y)*(p.x-a.x)/(b.x-a.x),1e-10,'cardiac intersection');
+ }
 });
 
 test('aortic closure produces a pressure notch and rebound during isovolumic relaxation',()=>{
@@ -291,7 +295,7 @@ test('PV and waveform samples preserve identical LV pressures through late tampo
  const {plotSample,pvPoints,GUYTON_PRA_MAX}=await import('../dist/plot-data.js');
  assert.equal(GUYTON_PRA_MAX,20);
  const m=new PhysiologyModel();
- m.startIntervention({type:'pericardialInfusion',volumeMl:385,rateMlMin:200});
+ m.startIntervention({type:'pericardialInfusion',volumeMl:399,rateMlMin:200});
  m.advance(180);
  close(m.effusionVolume,400,1e-8,'lab total pericardial volume');
  const samples=[];for(let i=0;i<2000;i++)samples.push(plotSample(m.advance(.002)));
@@ -299,9 +303,48 @@ test('PV and waveform samples preserve identical LV pressures through late tampo
  assert.ok(beat.length>100);
  const cavity=pvPoints(samples,id),transmural=pvPoints(samples,id,true);
  close(Math.max(...cavity.map(p=>p.y)),Math.max(...beat.map(s=>s.lvPressure)),0,'same-beat LV peak');
- assert.ok(Math.max(...cavity.map(p=>p.y))>Math.max(...transmural.map(p=>p.y))+1,'external pressure explains old discrepancy');
+ for(let i=0;i<beat.length;i++)close(cavity[i].y-transmural[i].y,beat[i].pericardialPressure,1e-10,'same-sample external pressure offset');
  for(let i=0;i<beat.length;i++){
   assert.equal(cavity[i].y,beat[i].lvPressure);
   assert.equal(cavity[i].x,beat[i].lvVolume);
  }
+});
+
+
+test('LV systolic impairment raises filling pressure and ESV, with reduced output and unchanged RV intrinsic parameters',()=>{
+ const m=new PhysiologyModel();m.setReflex(false);const before=m.snapshot(),rv=m.config.rvElastance;
+ m.setLVFunction(.25);const after=m.advance(180);
+ assert.ok(after.co<before.co);assert.ok(after.lvedp>before.lvedp+5);assert.ok(after.esv>before.esv+20);
+ assert.equal(m.config.rvElastance,rv);assert.equal(m.lvStiffness,1);
+ m.setLVFunction(1);const recovered=m.advance(180);close(recovered.co,before.co,.15,'LV function restoration');
+});
+test('stiffness and systolic function are independent, and removing pericardial constraint conserves volume',()=>{
+ const m=new PhysiologyModel();m.setReflex(false);m.setVagalFeedback(false);
+ const passive=m.lvPressureVolume(120,0);m.setLVStiffness(2);
+ assert.ok(m.lvPressureVolume(120,0)>passive);assert.equal(m.lvFunction,1);
+ m.setLVStiffness(1);m.startIntervention({type:'pericardialInfusion',volumeMl:399,rateMlMin:600});const before=m.advance(180);
+ m.setPericardium(false);const after=m.advance(180);
+ assert.ok(after.co>before.co);assert.ok(after.edv>before.edv);close(after.bloodVolume,before.bloodVolume,1e-7,'pericardiectomy conservation');
+});
+test('completed-beat CO equals SV times HR during changing function and hemorrhage',()=>{
+ const m=new PhysiologyModel();m.setLVFunction(.5);m.startIntervention({type:'hemorrhage',volumeMl:500,rateMlMin:1000});
+ for(let i=0;i<300;i++){const s=m.advance(.1);close(s.co,s.sv*s.hr/1000,1e-10,'beat identity');assert.ok(s.map>=s.dbp&&s.map<=s.sbp);}
+});
+test('reported MAP is the time integral of the sampled arterial waveform over a completed beat',()=>{
+ const m=new PhysiologyModel();while(m.phase>.005)m.step(.002);
+ // Begin at an actual accumulator boundary, retaining its tiny existing sample.
+ let integral=m.beat.map,duration=m.beat.duration,id=m.beatId;
+ while(m.beatId===id){integral+=m.pressures()[2]*.002;duration+=.002;m.step(.002);}
+ close(m.snapshot().map,integral/duration,1e-10,'waveform averaged MAP');
+});
+
+test('PV ejection width agrees with stroke volume during an abrupt change in LV function',()=>{
+ const m=new PhysiologyModel();m.setLVFunction(.25);
+ for(let i=0;i<500;i++){const s=m.advance(.1);close(s.edv-s.esv,s.sv,.1,'same-ejection SV');}
+});
+test('baseline and withheld moderate hemorrhage remain within teaching calibration ranges',()=>{
+ const m=new PhysiologyModel();m.setReflex(false);m.setVagalFeedback(false);const b=m.snapshot();
+ assert.ok(b.co>4.8&&b.co<5.8);assert.ok(b.map>80&&b.map<95);assert.ok(b.pms>6&&b.pms<9);
+ m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:1000});const s=m.advance(240);
+ assert.ok(s.co>3.2&&s.co<4.4);assert.ok(s.map>50&&s.map<70);assert.ok(s.cvp<b.cvp);
 });

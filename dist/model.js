@@ -4,12 +4,39 @@
  */
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
+// Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
+export const DEFAULT_PARAMETERS=Object.freeze({
+  "systemicCompliance": 113,
+  "systemicUnstressed": 2174.6136,
+  "systemicResistance": 0.9233,
+  "venousResistance": 0.0308,
+  "lvElastance": 4.0293,
+  "lvCurvature": -0.013,
+  "lvAlpha": 2.6337,
+  "lvBeta": 0.02,
+  "lvUnstressed": 40,
+  "rvElastance": 0.5,
+  "rvAlpha": 2.25,
+  "rvBeta": 0.0165,
+  "rvUnstressed": 60,
+  "venousRecruitment": 812.5,
+  "sympatheticHR": 108.4375,
+  "vagalHR": 40,
+  "sympatheticGain": 0.6758,
+  "cardiopulmonaryGain": 0.04,
+  "sympatheticLag": 20,
+  "vagalLag": 2,
+  "pericardialCapacity": 633.1471,
+  "pericardialScale": 1,
+  "pericardialCompliance": 35
+});
 export class PhysiologyModel {
-  constructor(){this.reset();}
+  constructor(parameters={}){this.config={...DEFAULT_PARAMETERS,...parameters};this.reset();}
   reset(){
     this.v=[120,120,842,3050,175,410,80,110];
+    this.lvFunction=1;this.lvStiffness=1;this.pericardiumIntact=true;
     this.time=0;this.phase=0;this.tone=0;this.vagalDrive=0;this.vagalEnabled=true;this.reflexEnabled=true;this.beatId=0;this.curveCache=null;
-    this.effusionVolume=15;this.removedBlood=0;this.intervention=null;this.limit=null;
+    this.effusionVolume=1;this.removedBlood=0;this.intervention=null;this.limit=null;
     this.metrics={sbp:120,dbp:80,map:93,co:5,cvp:4,lvedp:8};
     this.aorticValveOpen=false;this.aorticClosedThisBeat=false;this.aorticClosureTime=null;this.notchAmplitude=0;
     this.beat=this.newBeat();
@@ -22,11 +49,13 @@ export class PhysiologyModel {
     if(this.aorticClosureTime!==null)this.aorticClosureTime-=this.time;
     this.time=0;this.reflexEnabled=true;this.vagalEnabled=true;
     this.baselineMap=this.metrics.map;
+    this.baselineAtrialDistendingPressure=this.metrics.cvp-this.metrics.meanPericardialPressure;
     this.referenceBloodVolume=this.bloodVolume;
+    this.baselineCapacity=this.metrics.co/(1-Math.exp(-Math.max(.1,this.metrics.cvp-this.metrics.meanPericardialPressure+2)/8));
     this.curveCache=null;
     return this.snapshot();
   }
-  newBeat(){return {duration:0,aortic:0,map:0,peri:0,rap:0,max:-Infinity,min:Infinity,lvedp:0,lvedpTransmural:0,edv:0,esv:Infinity};}
+  newBeat(){return {duration:0,aortic:0,venous:0,systemicVenous:0,map:0,peri:0,rap:0,max:-Infinity,min:Infinity,lvedp:0,lvedpTransmural:0,edv:this.v?.[0]??0,esv:this.v?.[0]??Infinity};}
   // Legacy API now controls the sympathetic limb only; vagal control is independent.
   setReflex(enabled){this.setSympatheticFeedback(enabled);}
   setSympatheticFeedback(enabled){this.reflexEnabled=Boolean(enabled);}
@@ -38,8 +67,11 @@ export class PhysiologyModel {
   }
   stopIntervention(){this.intervention=null;}
   get bloodVolume(){return this.v.reduce((a,b)=>a+b,0);}
-  get hr(){return 72+55*this.tone-8*this.vagalDrive;}
-  parameters(){return {v0:BASE_V0.map((v,i)=>i===3?v-450*this.tone:v),rs:.9*(1+.85*this.tone),rv:.045,cp:1+0.55*this.tone};}
+  get hr(){return clamp(70+this.config.sympatheticHR*this.tone-this.config.vagalHR*this.vagalDrive,35,200);}
+  setLVFunction(fraction){if(!Number.isFinite(fraction)||fraction<.1||fraction>1.5)throw new Error('LV function must be 0.1–1.5');this.lvFunction=fraction;}
+  setLVStiffness(multiplier){if(!Number.isFinite(multiplier)||multiplier<.5||multiplier>3)throw new Error('LV stiffness must be 0.5–3');this.lvStiffness=multiplier;}
+  setPericardium(intact){this.pericardiumIntact=Boolean(intact);}
+  parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-c.venousRecruitment*this.tone:v),rs:c.systemicResistance*(1+c.sympatheticGain*this.tone),rv:c.venousResistance*(1+.12*this.tone),cp:1+0.55*this.tone};}
   aorticClosurePressure(){
     if(this.aorticClosureTime===null)return 0;
     const age=this.time-this.aorticClosureTime;
@@ -50,10 +82,15 @@ export class PhysiologyModel {
     return -this.notchAmplitude*Math.exp(-12*age)*Math.sin(2*Math.PI*age/duration)*(1-age/duration)**2;
   }
   lvPressureVolume(volume,activation=0){
-    const distendingVolume=Math.max(0,volume-BASE_V0[0]);
-    return .55*(Math.exp(clamp(distendingVolume/65,0,8))-1)
-      +2.1*this.parameters().cp*activation*distendingVolume;
+    const c=this.config,z=c.lvBeta*this.lvStiffness*(volume-c.lvUnstressed);
+    // Exponential passive relation with a smooth tangent extension below V0.
+    // Avoid the legacy discontinuous low-volume branch and error-return pressure.
+    const passive=c.lvAlpha*(z>0?Math.expm1(Math.min(z,8)):z);
+    const u=Math.max(0,volume-10);
+    const active=this.lvFunction*this.parameters().cp*activation*u*Math.max(.2,c.lvElastance+c.lvCurvature*u);
+    return passive+active;
   }
+
   ventricularReferenceCurves(){
     const diastolic=[],systolic=[];
     for(let x=0;x<=250;x+=1){
@@ -64,12 +101,13 @@ export class PhysiologyModel {
   }
   pressures(){
     const p=this.parameters(),v=this.v;
-    const peri=.35*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-350)/85,-8,6));
+    const c=this.config;
+    const peri=-4+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
     const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-p.v0[1]);
     return [peri+this.lvPressureVolume(v[0],activation),
-      peri+.3*(Math.exp(clamp(rv/85,0,8))-1)+.65*p.cp*activation*rv,
-      (v[2]-p.v0[2])/1.5+this.aorticClosurePressure(),(v[3]-p.v0[3])/110,
+      peri+c.rvAlpha*Math.expm1(clamp(c.rvBeta*(v[1]-c.rvUnstressed),-8,8))+c.rvElastance*p.cp*activation*rv,
+      (v[2]-p.v0[2])/1.5+this.aorticClosurePressure(),(v[3]-p.v0[3])/c.systemicCompliance,
       (v[4]-p.v0[4])/5,(v[5]-p.v0[5])/22,
       peri+(v[6]-p.v0[6])/18,peri+(v[7]-p.v0[7])/15,peri];
   }
@@ -92,9 +130,9 @@ export class PhysiologyModel {
         this.v=this.v.map(v=>v*(1-amount/blood));this.removedBlood+=amount;
       }else if(a.type==='bloodInfusion')this.v[3]+=amount;
       else if(a.type==='pericardialInfusion')this.effusionVolume+=amount;
-      else {amount=Math.min(amount,Math.max(0,this.effusionVolume-15));this.effusionVolume-=amount;}
+      else {amount=Math.min(amount,Math.max(0,this.effusionVolume-1));this.effusionVolume-=amount;}
       a.deliveredMl+=amount;
-      if(a.deliveredMl>=a.volumeMl-1e-8||(a.type==='pericardialDrain'&&this.effusionVolume<=15+1e-8))this.intervention=null;
+      if(a.deliveredMl>=a.volumeMl-1e-8||(a.type==='pericardialDrain'&&this.effusionVolume<=1+1e-8))this.intervention=null;
     }
     const p=this.pressures(),params=this.parameters();
     if(this.aorticValveOpen&&p[0]<=p[2]){
@@ -110,34 +148,39 @@ export class PhysiologyModel {
     const out=Array(8).fill(0);for(const e of transfers)out[e.i]+=e.q;
     const scale=this.v.map((v,i)=>out[i]>0?Math.min(1,Math.max(0,v-1)/(out[i]*dt)):1);
     let qa=0;for(let k=0;k<transfers.length;k++){const e=transfers[k],q=e.q*scale[e.i],d=q*dt;this.v[e.i]-=d;this.v[e.j]+=d;if(k===0)qa=q;}
-    const b=this.beat;b.duration+=dt;b.aortic+=qa*dt;b.map+=p[2]*dt;b.peri+=p[8]*dt;b.rap+=p[6]*dt;b.max=Math.max(b.max,p[2]);b.min=Math.min(b.min,p[2]);
-    b.edv=Math.max(b.edv,this.v[0]);b.esv=Math.min(b.esv,this.v[0]);
+    const b=this.beat;b.venous+=(p[3]-p[6])/params.rv*dt;b.systemicVenous+=p[3]*dt;b.duration+=dt;b.aortic+=qa*dt;b.map+=p[2]*dt;b.peri+=p[8]*dt;b.rap+=p[6]*dt;b.max=Math.max(b.max,p[2]);b.min=Math.min(b.min,p[2]);
+    // Use volumes from this ejection, not the next beat's changing preload.
+    if(this.phase<.2)b.edv=Math.max(b.edv,this.v[0]);if(this.phase<.6)b.esv=Math.min(b.esv,this.v[0]);
     if(this.phase>.85){b.lvedp=p[0];b.lvedpTransmural=p[0]-p[8];}
     const pressureError=((this.baselineMap||93)-this.metrics.map)/48;
     if(this.reflexEnabled){
-      const target=clamp(pressureError,-.35,1);
-      this.tone+=(target-this.tone)*dt/5;
+      const atrialError=(this.baselineAtrialDistendingPressure??0)-(this.metrics.cvp-this.metrics.meanPericardialPressure);
+      const target=clamp(pressureError+this.config.cardiopulmonaryGain*atrialError,-.35,1);
+      this.tone+=(target-this.tone)*dt/this.config.sympatheticLag;
     }
     // Independent, provisional vagal chronotropic limb. Signed deviation from
     // baseline, NOT the original SimBioSys 0–1 tone. No vascular/ventricular effect.
-    // Gains (8 bpm per unit) and 1 s lag are uncalibrated teaching parameters.
+    // Gains and lags are reduced-model calibration parameters, not legacy tone units.
     if(this.vagalEnabled){
       const target=clamp(-pressureError,-1,1);
-      this.vagalDrive+=(target-this.vagalDrive)*dt;
+      this.vagalDrive+=(target-this.vagalDrive)*dt/this.config.vagalLag;
     }
     this.phase+=dt*this.hr/60;this.time+=dt;
-    if(this.phase>=1){this.phase%=1;this.beatId++;this.aorticClosedThisBeat=false;this.metrics={meanPericardialPressure:b.peri/b.duration,sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv};this.beat=this.newBeat();}
+    if(this.phase>=1){this.phase%=1;this.beatId++;this.aorticClosedThisBeat=false;this.metrics={beatHR:60/b.duration,vr:b.venous/b.duration*.06,meanSystemicVenousPressure:b.systemicVenous/b.duration,meanPericardialPressure:b.peri/b.duration,sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv};this.beat=this.newBeat();}
     if(this.effusionVolume>1500||p.some(x=>!Number.isFinite(x))||p.slice(2,8).some(x=>x < -20)||this.v.some(x=>!Number.isFinite(x)||x<0)){this.limit='Outside supported model range. Reset to continue.';this.intervention=null;}
   }
   snapshot(){
     const p=this.pressures(),q=this.parameters(),m=this.metrics;
-    // Course Guyton approximation: volume shifts Pms, while RVR stays fixed.
-    // Use total circulating volume, not pulsatile arterial/venous redistribution.
-    // Effective course reservoir compliance: 250 mL/mmHg (provisional).
-    const pms=Math.max(0,7+(this.bloodVolume-(this.referenceBloodVolume??this.bloodVolume))/250);
-    const rvr=1;
+    // Two systemic compliant reservoirs: the zero-flow filling pressure is
+    // the compliance-weighted mean arterial/venous pressure. The effective
+    // return resistance includes the arterial compliance fraction of SVR.
+    // Beat averages remove pulsatile redistribution without inventing negative RVR.
+    const c=this.config,ca=1.5,cv=c.systemicCompliance;
+    const pms=(ca*m.map+cv*m.meanSystemicVenousPressure)/(ca+cv);
+    const rvr=(q.rv+q.rs*ca/(ca+cv))/.06;
     const venous=[],cardiac=[];
-    const capacity=10*q.cp*(this.hr/72)*(1.05/q.rs);
+    const baselineCapacity=this.baselineCapacity??10;
+    const capacity=baselineCapacity*q.cp*Math.pow(this.lvFunction,.5)*(this.hr/70)*(c.systemicResistance/q.rs);
     const externalPressure=this.metrics.meanPericardialPressure??p[8];
     for(let x=-5;x<=25;x+=.25){
       venous.push({x,y:(pms-x)/rvr});
@@ -149,13 +192,13 @@ export class PhysiologyModel {
       const a=venous[i-1].y-cardiac[i-1].y,b=venous[i].y-cardiac[i].y;
       if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
     }
-    this.curveCache={venous,cardiac,intersection,label:'Course approximation: fixed RVR; volume-dependent Pms. Intersection is predicted equilibrium, not transient measured CO.'};
-    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,hr:this.hr,...m,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
-      contractility:2.1*q.cp,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
+    this.curveCache={venous,cardiac,intersection,label:'Illustrative cardiac function curve; vascular curve uses systemic compartment parameters. Dot is their intersection, not transient measured CO.'};
+    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
+      contractility:this.config.lvElastance*q.cp*this.lvFunction,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
       lvTransmuralPressure:p[0]-p[8],
       bloodVolume:this.bloodVolume,effusionVolume:this.effusionVolume,removedBlood:this.removedBlood,
-      reflexEnabled:this.reflexEnabled,sympatheticFeedbackEnabled:this.reflexEnabled,vagalFeedbackEnabled:this.vagalEnabled,vagalDrive:this.vagalDrive,vagalHeartRateEffect:-8*this.vagalDrive,tone:this.tone,autonomicTone:this.tone,intervention:this.intervention?{...this.intervention}:null,limit:this.limit,
+      reflexEnabled:this.reflexEnabled,sympatheticFeedbackEnabled:this.reflexEnabled,vagalFeedbackEnabled:this.vagalEnabled,vagalDrive:this.vagalDrive,vagalHeartRateEffect:-this.config.vagalHR*this.vagalDrive,tone:this.tone,autonomicTone:this.tone,intervention:this.intervention?{...this.intervention}:null,limit:this.limit,
       compartmentVolumes:[...this.v],guyton:this.curveCache};
   }
 }
