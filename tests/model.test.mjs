@@ -286,3 +286,22 @@ test('intrinsic ventricular reference curves ignore loading and phase, but systo
  assert.notDeepEqual(after.systolic,before.systolic);
  for(let i=0;i<500;i++){const s=m.advance(.002);const low=m.lvPressureVolume(s.lvVolume,0),high=m.lvPressureVolume(s.lvVolume,1);assert.ok(s.lvTransmuralPressure>=low-1e-8&&s.lvTransmuralPressure<=high+1e-8,'loop enclosed by intrinsic envelopes');}
 });
+
+test('PV and waveform samples preserve identical LV pressures through late tamponade',async()=>{
+ const {plotSample,pvPoints,GUYTON_PRA_MAX}=await import('../dist/plot-data.js');
+ assert.equal(GUYTON_PRA_MAX,20);
+ const m=new PhysiologyModel();
+ m.startIntervention({type:'pericardialInfusion',volumeMl:385,rateMlMin:200});
+ m.advance(180);
+ close(m.effusionVolume,400,1e-8,'lab total pericardial volume');
+ const samples=[];for(let i=0;i<2000;i++)samples.push(plotSample(m.advance(.002)));
+ const id=m.beatId-1,beat=samples.filter(s=>s.beatId===id);
+ assert.ok(beat.length>100);
+ const cavity=pvPoints(samples,id),transmural=pvPoints(samples,id,true);
+ close(Math.max(...cavity.map(p=>p.y)),Math.max(...beat.map(s=>s.lvPressure)),0,'same-beat LV peak');
+ assert.ok(Math.max(...cavity.map(p=>p.y))>Math.max(...transmural.map(p=>p.y))+1,'external pressure explains old discrepancy');
+ for(let i=0;i<beat.length;i++){
+  assert.equal(cavity[i].y,beat[i].lvPressure);
+  assert.equal(cavity[i].x,beat[i].lvVolume);
+ }
+});
