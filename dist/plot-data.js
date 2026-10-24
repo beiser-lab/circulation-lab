@@ -1,6 +1,6 @@
 // One recorded sample supplies both charts; retain beat identity during transients.
 export function plotSample(state) {
-  return Object.fromEntries(['time','beatId','arterialPressure','lvPressure','raPressure',
+  return Object.fromEntries(['time','beatId','arterialPressure','lvPressure','raPressure','laPressure',
     'lvVolume','lvTransmuralPressure','pericardialPressure'].map(key=>[key,state[key]]));
 }
 export function pvPoints(samples, beatId, transmural=false) {

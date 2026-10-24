@@ -1,16 +1,21 @@
-import { PhysiologyModel } from './model.js?v=calibration-1';
+import { PhysiologyModel } from './model.js?v=interface-2';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=calibration-1';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=interface-2';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
 const specs = [
- ['hr','Heart rate','beats/min',0], ['sbp','Systolic pressure','mmHg',0], ['dbp','Diastolic pressure','mmHg',0], ['map','Mean arterial pressure','mmHg',0],
+ ['hr','HR','beats/min',0], ['sbp','SBP','mmHg',0], ['dbp','DBP','mmHg',0], ['map','MAP','mmHg',0],
  ['co','Cardiac output','L/min',2], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
- ['pms','Mean systemic filling pressure','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
+ ['pms','Pms','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
  ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
 ];
-const selected = new Set([...specs.slice(0,12).map(x=>x[0])]);
+const measureGroups = [
+ {title:'Vital Signs',keys:['sbp','dbp','map','hr']},
+ {title:'Cardiac Measures',keys:['co','sv','edv','esv','lvedp','contractility','lvedpTransmural','meanPericardialPressure','effusionVolume']},
+ {title:'Vascular Measures',keys:['vr','cvp','svr','pms','rvr','bloodVolume']}
+];
+const selected = new Set(['sbp','dbp','map','hr','co','sv','edv','esv','lvedp','contractility','vr','cvp','svr','pms','rvr']);
 let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
 const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
@@ -22,7 +27,11 @@ function setupMetrics(){
  renderMetrics();
 }
 function renderMetrics(){
- $('metrics').innerHTML=specs.filter(([k])=>selected.has(k)).map(([k,label,unit,d])=>`<div class="metric"><div class="metric-label" title="${label}">${label}</div><div class="metric-value"><span data-metric="${k}">${fmt(state[k],d)}</span><span class="metric-unit">${unit}</span></div></div>`).join('');
+ $('metrics').innerHTML=measureGroups.map(({title,keys},index)=>{
+ const visible=keys.map(key=>specs.find(([k])=>k===key)).filter(([k])=>selected.has(k));
+ if(!visible.length)return '';
+ return `<section class="measure-group" aria-labelledby="measure-group-${index}"><h3 id="measure-group-${index}">${title}</h3><div class="metrics">${visible.map(([k,label,unit,d])=>`<div class="metric"><div class="metric-label" title="${label}">${label}</div><div class="metric-value"><span data-metric="${k}">${fmt(state[k],d)}</span><span class="metric-unit">${unit}</span></div></div>`).join('')}</div></section>`;
+ }).join('');
 }
 function updateMetrics(){
  for(const [k,, ,d] of specs){const el=document.querySelector(`[data-metric="${k}"]`);if(el)el.textContent=fmt(state[k],d);}
@@ -45,7 +54,7 @@ function makeBaseline(){
 }
 function capture(){
  history.push(plotSample(state));
- if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
+ if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
 function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-stiffness').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
@@ -71,7 +80,7 @@ function draw(){
  // Fixed axes preserve visual comparisons throughout every experiment.
  const pressureMax=180;
  const wave=chart('pressures',start,end,0,pressureMax,'Time (s)','Pressure (mmHg)');
- for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['raPressure',colors.venous]]){
+ for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['laPressure',colors.venous]]){
  if(overlay)wave.line(baseline.map((s,i)=>({x:start+i*.01,y:s[key]})),color,true);
  wave.line(history.map(s=>({x:s.time,y:s[key]})),color);
  }
@@ -87,7 +96,7 @@ function draw(){
  pv.line(pvPoints(history,state.beatId,transmural),colors.arterial);
  pv.dot(state.lvVolume,transmural?state.lvTransmuralPressure:state.lvPressure);
  const g=state.guyton;
- if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Flow (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);if(g.intersection)plot.dot(g.intersection.x,g.intersection.y);}
+ if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Venous Return (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);if(g.intersection)plot.dot(g.intersection.x,g.intersection.y);}
 
 }
 function frame(now){
@@ -105,7 +114,7 @@ $('reflex').addEventListener('change',e=>{model.setSympatheticFeedback(e.target.
 $('vagal').addEventListener('change',e=>{model.setVagalFeedback(e.target.value==='active');state=model.snapshot();updateMetrics();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){running=false;updateMetrics();}previousFrame=performance.now();});
 $('overlay').addEventListener('change',draw);
-$('configure').addEventListener('click',()=>{$('measure-options').hidden=!$('measure-options').hidden;});
+$('configure').addEventListener('click',()=>{const open=$('display-options').hidden;$('display-options').hidden=!open;$('configure').setAttribute('aria-expanded',String(open));});
 $('apply').addEventListener('click',()=>start({hemorrhage:'hemorrhage',infusion:'bloodInfusion',pericardial:'pericardialInfusion',drainage:'pericardialDrain'}[$('intervention').value],Number($('volume').value),Number($('rate').value)));
 $('stop').addEventListener('click',()=>{model.stopIntervention();state=model.snapshot();updateMetrics();});
 $('pv-pressure').addEventListener('change',draw);
@@ -119,7 +128,7 @@ $('load').addEventListener('click',()=>{
  }
  updateQuestion();
 });
-function updateQuestion(){const p=$('intervention').value;const tamponade=['pericardial','drainage'].includes(p);$('question-title').textContent=tamponade?'Pressure is not always preload':'Follow the pressure gradient';$('question').textContent=tamponade?'As pericardial pressure rises, what happens to measured filling pressure versus the pressure that distends the ventricle?':'How does a fall in circulating volume change mean systemic filling pressure, venous return, and stroke volume?';}
+function updateQuestion(){const p=$('intervention').value;const tamponade=['pericardial','drainage'].includes(p);$('question-title').textContent=tamponade?'Pressure is not always preload':'Follow the pressure gradient';$('question').textContent=tamponade?'As pericardial pressure rises, what happens to measured filling pressure versus the pressure that distends the ventricle?':'How does a fall in circulating volume change Pms, venous return, and stroke volume?';}
 $('intervention').addEventListener('change',()=>{
  const pericardial=['pericardial','drainage'].includes($('intervention').value);
  $('volume').value=pericardial?200:500;$('rate').value=pericardial?200:10000/60;
