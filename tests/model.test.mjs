@@ -244,3 +244,18 @@ test('freezing vagal feedback holds its current drive while sympathetic response
   assert.notEqual(model.tone,tone);
   assert.equal(model.snapshot().sympatheticFeedbackEnabled,true);
 });
+
+test('course vascular curve stays still across beats and pericardial infusion',()=>{
+ const m=new PhysiologyModel(),base=m.snapshot();
+ for(let i=0;i<100;i++){const s=m.advance(.02);close(s.pms,base.pms,1e-10,'stable Pms');assert.equal(s.rvr,base.rvr);}
+ m.startIntervention({type:'pericardialInfusion',volumeMl:200,rateMlMin:600});
+ const s=m.advance(20);close(s.pms,base.pms,1e-10,'unchanged blood volume');assert.equal(s.rvr,base.rvr);
+});
+test('blood volume shifts the vascular curve in parallel and marker lies on both curves',()=>{
+ const m=new PhysiologyModel(),base=m.snapshot();
+ m.startIntervention({type:'hemorrhage',volumeMl:500,rateMlMin:500});const s=m.advance(60);
+ assert.ok(s.pms<base.pms);assert.equal(s.rvr,base.rvr);
+ for(let i=0;i<s.guyton.venous.length;i++)close(s.guyton.venous[i].y-base.guyton.venous[i].y,(s.pms-base.pms)/s.rvr,1e-10,'parallel shift');
+ for(const state of [base,s]){const p=state.guyton.intersection;assert.ok(p);close(p.y,(state.pms-p.x)/state.rvr,1e-10,'venous intersection');const c=state.guyton.cardiac,i=c.findIndex(q=>q.x>=p.x);const a=c[i-1],b=c[i];close(p.y,a.y+(b.y-a.y)*(p.x-a.x)/(b.x-a.x),1e-10,'cardiac intersection');}
+ m.startIntervention({type:'bloodInfusion',volumeMl:500,rateMlMin:500});close(m.advance(60).pms,base.pms,1e-9,'volume restoration');
+});

@@ -36,3 +36,7 @@ Phoenix Maroon (#800000), white, and greys follow the UChicago primary color pal
 ## Source scope
 
 This repository contains only the independent web application and its tests. Original SimBioSys binaries, reverse-engineering artifacts, lab answer keys, and private teaching files are excluded. No reuse license has yet been selected.
+
+### Guyton teaching convention
+
+RVR is fixed at 1 mmHg·min/L for the available non-exercise scenarios. Pms starts at 7 mmHg and changes with total circulating blood volume using a provisional effective reservoir compliance of 250 mL/mmHg, bounded at zero. This course-level curve approximation is separate from the pulsatile compartment solver; its slope is not inferred from instantaneous arterial resistance. Pericardial infusion alone does not shift the vascular curve. The cardiac approximation includes HR, contractility, afterload, and beat-averaged pericardial pressure. The dot is the intersection of the plotted curves (predicted equilibrium), not transient measured CO/CVP. Neither curve has yet been calibrated to the original model. Fixed plot limits: pressure 0–200 mmHg, LV volume 0–250 mL, Guyton flow 0–20 L/min and Pra −5–25 mmHg; out-of-range traces are clipped.

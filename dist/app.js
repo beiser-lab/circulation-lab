@@ -1,4 +1,4 @@
-import { PhysiologyModel } from './model.js';
+import { PhysiologyModel } from './model.js?v=guyton-3';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -65,19 +65,21 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
 }
 function draw(){
  const overlay=$('overlay').checked;const end=Math.max(12,state.time),start=end-12;
- const pressureMax=Math.max(140,...history.map(s=>Math.max(s.lvPressure,s.arterialPressure)))*1.08;
- const wave=chart('pressures',start,end,0,Math.ceil(pressureMax/20)*20,'Time (s)','Pressure (mmHg)');
+ // Fixed axes preserve visual comparisons throughout every experiment.
+ const pressureMax=200;
+ const wave=chart('pressures',start,end,0,pressureMax,'Time (s)','Pressure (mmHg)');
  for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['raPressure',colors.venous]]){
  if(overlay)wave.line(baseline.map((s,i)=>({x:start+i*.01,y:s[key]})),color,true);
  wave.line(history.map(s=>({x:s.time,y:s[key]})),color);
  }
  const recent=history.filter(s=>s.time>state.time-Math.max(1.5,120/Math.max(30,state.hr)));
- const maxVolume=Math.max(160,...recent.map(s=>s.lvVolume),...(overlay?baseline.map(s=>s.lvVolume):[]));
- const pv=chart('pv',0,Math.ceil(maxVolume/25)*25,0,Math.ceil(pressureMax/20)*20,'LV volume (mL)','LV pressure (mmHg)');
+ const maxVolume=250;
+ const pv=chart('pv',0,maxVolume,0,pressureMax,'LV volume (mL)','LV pressure (mmHg)');
  if(overlay)pv.line(baseline.filter(s=>s.time>baselineState.time-1.5).map(s=>({x:s.lvVolume,y:s.lvPressure})),colors.arterial,true);
  pv.line(recent.map(s=>({x:s.lvVolume,y:s.lvPressure})),colors.arterial);pv.dot(state.lvVolume,state.lvPressure);
  const g=state.guyton;
- if(g){const all=[...(g.venous||[]),...(g.cardiac||[])];const xmin=Math.min(-5,...all.map(p=>p.x)),xmax=Math.max(20,...all.map(p=>p.x));const ymax=Math.max(8,...all.map(p=>p.y));const plot=chart('guyton',xmin,xmax,0,Math.ceil(ymax/2)*2,'Right atrial pressure (mmHg)','Flow (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);plot.dot(state.cvp,state.co);}
+ if(g){const plot=chart('guyton',-5,25,0,20,'Right atrial pressure (mmHg)','Flow (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);if(g.intersection)plot.dot(g.intersection.x,g.intersection.y);}
+
 }
 function frame(now){
  const elapsed=Math.max(0,(now-previousFrame)/1000);previousFrame=now;

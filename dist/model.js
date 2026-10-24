@@ -20,9 +20,11 @@ export class PhysiologyModel {
     // beat (near-zero CO and pulse pressure) at the first visible timestep.
     this.time=0;this.reflexEnabled=true;this.vagalEnabled=true;
     this.baselineMap=this.metrics.map;
+    this.referenceBloodVolume=this.bloodVolume;
+    this.curveCache=null;
     return this.snapshot();
   }
-  newBeat(){return {duration:0,aortic:0,map:0,rap:0,max:-Infinity,min:Infinity,lvedp:0,lvedpTransmural:0,edv:0,esv:Infinity};}
+  newBeat(){return {duration:0,aortic:0,map:0,peri:0,rap:0,max:-Infinity,min:Infinity,lvedp:0,lvedpTransmural:0,edv:0,esv:Infinity};}
   // Legacy API now controls the sympathetic limb only; vagal control is independent.
   setReflex(enabled){this.setSympatheticFeedback(enabled);}
   setSympatheticFeedback(enabled){this.reflexEnabled=Boolean(enabled);}
@@ -78,7 +80,7 @@ export class PhysiologyModel {
     const out=Array(8).fill(0);for(const e of transfers)out[e.i]+=e.q;
     const scale=this.v.map((v,i)=>out[i]>0?Math.min(1,Math.max(0,v-1)/(out[i]*dt)):1);
     let qa=0;for(let k=0;k<transfers.length;k++){const e=transfers[k],q=e.q*scale[e.i],d=q*dt;this.v[e.i]-=d;this.v[e.j]+=d;if(k===0)qa=q;}
-    const b=this.beat;b.duration+=dt;b.aortic+=qa*dt;b.map+=p[2]*dt;b.rap+=p[6]*dt;b.max=Math.max(b.max,p[2]);b.min=Math.min(b.min,p[2]);
+    const b=this.beat;b.duration+=dt;b.aortic+=qa*dt;b.map+=p[2]*dt;b.peri+=p[8]*dt;b.rap+=p[6]*dt;b.max=Math.max(b.max,p[2]);b.min=Math.min(b.min,p[2]);
     b.edv=Math.max(b.edv,this.v[0]);b.esv=Math.min(b.esv,this.v[0]);
     if(this.phase>.85){b.lvedp=p[0];b.lvedpTransmural=p[0]-p[8];}
     const pressureError=((this.baselineMap||93)-this.metrics.map)/48;
@@ -94,19 +96,30 @@ export class PhysiologyModel {
       this.vagalDrive+=(target-this.vagalDrive)*dt;
     }
     this.phase+=dt*this.hr/60;this.time+=dt;
-    if(this.phase>=1){this.phase%=1;this.beatId++;this.metrics={sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv};this.beat=this.newBeat();}
+    if(this.phase>=1){this.phase%=1;this.beatId++;this.metrics={meanPericardialPressure:b.peri/b.duration,sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv};this.beat=this.newBeat();}
     if(this.effusionVolume>1500||p.some(x=>!Number.isFinite(x))||p.slice(2,8).some(x=>x < -20)||this.v.some(x=>!Number.isFinite(x)||x<0)){this.limit='Outside supported model range. Reset to continue.';this.intervention=null;}
   }
   snapshot(){
     const p=this.pressures(),q=this.parameters(),m=this.metrics;
-    // Systemic zero-flow pressure for the linear two-compliance approximation.
-    const pms=((this.v[2]-q.v0[2])+(this.v[3]-q.v0[3]))/(110+1.5);
-    const rvr=(q.rv+q.rs*1.5/(110+1.5))/.06;
-    if(!this.curveCache||Math.abs(this.time-this.curveCache.time)>.25){
-      const venous=[],cardiac=[];
-      for(let x=-5;x<=25;x+=.5){venous.push({x,y:Math.max(0,(pms-Math.max(x,-1))/rvr)});cardiac.push({x,y:Math.max(0,10*q.cp*(1-Math.exp(-Math.max(0,x-p[8]+2)/8)))});}
-      this.curveCache={time:this.time,venous,cardiac,label:'Analytical teaching approximation; frozen current tone. Curves are not model sweeps.'};
+    // Course Guyton approximation: volume shifts Pms, while RVR stays fixed.
+    // Use total circulating volume, not pulsatile arterial/venous redistribution.
+    // Effective course reservoir compliance: 250 mL/mmHg (provisional).
+    const pms=Math.max(0,7+(this.bloodVolume-(this.referenceBloodVolume??this.bloodVolume))/250);
+    const rvr=1;
+    const venous=[],cardiac=[];
+    const capacity=10*q.cp*(this.hr/72)*(1.05/q.rs);
+    const externalPressure=this.metrics.meanPericardialPressure??p[8];
+    for(let x=-5;x<=25;x+=.25){
+      venous.push({x,y:(pms-x)/rvr});
+      cardiac.push({x,y:Math.max(0,capacity*(1-Math.exp(-Math.max(0,x-externalPressure+2)/8)))});
     }
+    // Intersect the exact plotted line segments, not the pulsatile solver state.
+    let intersection=null;
+    for(let i=1;i<venous.length;i++){
+      const a=venous[i-1].y-cardiac[i-1].y,b=venous[i].y-cardiac[i].y;
+      if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
+    }
+    this.curveCache={venous,cardiac,intersection,label:'Course approximation: fixed RVR; volume-dependent Pms. Intersection is predicted equilibrium, not transient measured CO.'};
     return {time:this.time,beatId:this.beatId,phase:this.phase,hr:this.hr,...m,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
       contractility:2.1*q.cp,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
