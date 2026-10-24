@@ -26,7 +26,7 @@ function updateMetrics(){
  for(const [k,, ,d] of specs){const el=document.querySelector(`[data-metric="${k}"]`);if(el)el.textContent=fmt(state[k],d);}
  const t=state.time; $('clock').textContent=`${String(Math.floor(t/60)).padStart(2,'0')}:${(t%60).toFixed(1).padStart(4,'0')}`;
  $('status').textContent=state.limit ? 'Model boundary reached' : running ? (speed===1?'Running · Real time (1×)':`Running · Accelerated (${speed}×)`) : 'Simulation paused';
- $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'frozen at current tone'} · Vagal feedback ${state.vagalFeedbackEnabled?'active':'frozen at current tone'}.`;
+ $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'frozen at current tone'} · Parasympathetic feedback ${state.vagalFeedbackEnabled?'active':'frozen at current tone'}.`;
  $('run').textContent=running?'Ⅱ Pause experiment':'▶ Run experiment';
  $('warning').hidden=!state.limit; $('warning').textContent=state.limit || '';
  if(deliverySpec){
@@ -44,7 +44,7 @@ function capture(){
  history.push({time:state.time,arterialPressure:state.arterialPressure,lvPressure:state.lvPressure,raPressure:state.raPressure,lvVolume:state.lvVolume});
  if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
-function reset(){running=false;model.reset();model.setSympatheticFeedback($('reflex').checked);model.setVagalFeedback($('vagal').checked);speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
+function reset(){running=false;model.reset();model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
  if(!Number.isFinite(volumeMl)||volumeMl<=0||volumeMl>5000||!Number.isFinite(rateMlMin)||rateMlMin<=0||rateMlMin>10000){$('delivery').textContent='Use a volume above 0 and at most 5,000 mL; rate must be 1–10,000 mL/min.';return;}
  deliverySpec={type,volumeMl,rateMlMin,startRemoved:state.removedBlood,startBlood:state.bloodVolume,startEffusion:state.effusionVolume};
@@ -89,8 +89,8 @@ function frame(now){
 $('run').addEventListener('click',()=>{running=!running;previousFrame=performance.now();updateMetrics();});
 $('reset').addEventListener('click',reset);
 $('speed').addEventListener('change',e=>{speed=Number(e.target.value);previousFrame=performance.now();updateMetrics();});
-$('reflex').addEventListener('change',e=>{model.setSympatheticFeedback(e.target.checked);state=model.snapshot();updateMetrics();});
-$('vagal').addEventListener('change',e=>{model.setVagalFeedback(e.target.checked);state=model.snapshot();updateMetrics();});
+$('reflex').addEventListener('change',e=>{model.setSympatheticFeedback(e.target.value==='active');state=model.snapshot();updateMetrics();});
+$('vagal').addEventListener('change',e=>{model.setVagalFeedback(e.target.value==='active');state=model.snapshot();updateMetrics();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){running=false;updateMetrics();}previousFrame=performance.now();});
 $('overlay').addEventListener('change',draw);
 $('configure').addEventListener('click',()=>{$('measure-options').hidden=!$('measure-options').hidden;});
