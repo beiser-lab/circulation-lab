@@ -274,3 +274,15 @@ test('aortic closure produces a pressure notch and rebound during isovolumic rel
  close(m.bloodVolume,before,1e-8,'recoil conserves blood volume');
  m.advance(.2);close(m.aorticClosurePressure(),0,1e-12,'transient decays');
 });
+
+test('intrinsic ventricular reference curves ignore loading and phase, but systolic curve responds to sympathetic tone',()=>{
+ const m=new PhysiologyModel();m.setSympatheticFeedback(false);const before=m.ventricularReferenceCurves();
+ m.startIntervention({type:'pericardialInfusion',volumeMl:200,rateMlMin:600});m.advance(20);
+ assert.deepEqual(m.ventricularReferenceCurves(),before);
+ m.startIntervention({type:'hemorrhage',volumeMl:500,rateMlMin:1000});m.advance(30);
+ assert.deepEqual(m.ventricularReferenceCurves(),before);
+ m.setSympatheticFeedback(true);m.advance(20);const after=m.ventricularReferenceCurves();
+ assert.deepEqual(after.diastolic,before.diastolic);
+ assert.notDeepEqual(after.systolic,before.systolic);
+ for(let i=0;i<500;i++){const s=m.advance(.002);const low=m.lvPressureVolume(s.lvVolume,0),high=m.lvPressureVolume(s.lvVolume,1);assert.ok(s.lvTransmuralPressure>=low-1e-8&&s.lvTransmuralPressure<=high+1e-8,'loop enclosed by intrinsic envelopes');}
+});

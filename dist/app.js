@@ -1,4 +1,4 @@
-import { PhysiologyModel } from './model.js?v=notch-1';
+import { PhysiologyModel } from './model.js?v=pvr-1';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -37,11 +37,11 @@ function updateMetrics(){
 }
 function makeBaseline(){
  const b=new PhysiologyModel(); baseline=[];
- for(let i=0;i<1200;i++){b.advance(.01);const s=b.snapshot();baseline.push({time:s.time,arterialPressure:s.arterialPressure,lvPressure:s.lvPressure,raPressure:s.raPressure,lvVolume:s.lvVolume});}
+ for(let i=0;i<1200;i++){b.advance(.01);const s=b.snapshot();baseline.push({time:s.time,arterialPressure:s.arterialPressure,lvPressure:s.lvPressure,raPressure:s.raPressure,lvVolume:s.lvVolume,lvTransmuralPressure:s.lvTransmuralPressure});}
  baselineState=b.snapshot();
 }
 function capture(){
- history.push({time:state.time,arterialPressure:state.arterialPressure,lvPressure:state.lvPressure,raPressure:state.raPressure,lvVolume:state.lvVolume});
+ history.push({time:state.time,arterialPressure:state.arterialPressure,lvPressure:state.lvPressure,raPressure:state.raPressure,lvVolume:state.lvVolume,lvTransmuralPressure:state.lvTransmuralPressure});
  if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
 function reset(){running=false;model.reset();model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
@@ -66,7 +66,7 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
 function draw(){
  const overlay=$('overlay').checked;const end=Math.max(12,state.time),start=end-12;
  // Fixed axes preserve visual comparisons throughout every experiment.
- const pressureMax=200;
+ const pressureMax=180;
  const wave=chart('pressures',start,end,0,pressureMax,'Time (s)','Pressure (mmHg)');
  for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['raPressure',colors.venous]]){
  if(overlay)wave.line(baseline.map((s,i)=>({x:start+i*.01,y:s[key]})),color,true);
@@ -74,9 +74,11 @@ function draw(){
  }
  const recent=history.filter(s=>s.time>state.time-Math.max(1.5,120/Math.max(30,state.hr)));
  const maxVolume=250;
- const pv=chart('pv',0,maxVolume,0,pressureMax,'LV volume (mL)','LV pressure (mmHg)');
- if(overlay)pv.line(baseline.filter(s=>s.time>baselineState.time-1.5).map(s=>({x:s.lvVolume,y:s.lvPressure})),colors.arterial,true);
- pv.line(recent.map(s=>({x:s.lvVolume,y:s.lvPressure})),colors.arterial);pv.dot(state.lvVolume,state.lvPressure);
+ const pv=chart('pv',0,maxVolume,0,pressureMax,'LV volume (mL)','LV transmural pressure (mmHg)');
+ const reference=model.ventricularReferenceCurves();
+ pv.line(reference.diastolic,colors.venous);pv.line(reference.systolic,colors.lv);
+ if(overlay)pv.line(baseline.filter(s=>s.time>baselineState.time-1.5).map(s=>({x:s.lvVolume,y:s.lvTransmuralPressure})),colors.arterial,true);
+ pv.line(recent.map(s=>({x:s.lvVolume,y:s.lvTransmuralPressure})),colors.arterial);pv.dot(state.lvVolume,state.lvTransmuralPressure);
  const g=state.guyton;
  if(g){const plot=chart('guyton',-5,25,0,20,'Right atrial pressure (mmHg)','Flow (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);if(g.intersection)plot.dot(g.intersection.x,g.intersection.y);}
 
