@@ -49,12 +49,25 @@ export class PhysiologyModel {
     if(age<0||age>=duration)return 0;
     return -this.notchAmplitude*Math.exp(-12*age)*Math.sin(2*Math.PI*age/duration)*(1-age/duration)**2;
   }
+  lvPressureVolume(volume,activation=0){
+    const distendingVolume=Math.max(0,volume-BASE_V0[0]);
+    return .55*(Math.exp(clamp(distendingVolume/65,0,8))-1)
+      +2.1*this.parameters().cp*activation*distendingVolume;
+  }
+  ventricularReferenceCurves(){
+    const diastolic=[],systolic=[];
+    for(let x=0;x<=250;x+=1){
+      diastolic.push({x,y:this.lvPressureVolume(x,0)});
+      systolic.push({x,y:this.lvPressureVolume(x,1)});
+    }
+    return {diastolic,systolic};
+  }
   pressures(){
     const p=this.parameters(),v=this.v;
     const peri=.35*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-350)/85,-8,6));
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
     const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-p.v0[1]);
-    return [peri+.55*(Math.exp(clamp(lv/65,0,8))-1)+2.1*p.cp*activation*lv,
+    return [peri+this.lvPressureVolume(v[0],activation),
       peri+.3*(Math.exp(clamp(rv/85,0,8))-1)+.65*p.cp*activation*rv,
       (v[2]-p.v0[2])/1.5+this.aorticClosurePressure(),(v[3]-p.v0[3])/110,
       (v[4]-p.v0[4])/5,(v[5]-p.v0[5])/22,
