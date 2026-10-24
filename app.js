@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=interface-3';
+import { PhysiologyModel } from './model.js?v=waveforms-4';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=interface-3';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=waveforms-4';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -34,12 +34,15 @@ function renderMetrics(){
  }).join('');
 }
 function updateMetrics(){
+ for(const [branch,value] of [['sympathetic',1+state.tone],['parasympathetic',1+state.vagalDrive]]){$(`${branch}-value`).textContent=fmt(value,2);$(`${branch}-gauge`).value=value;}
+ $('relaxation-rate').textContent=`Effective relaxation speed: ${fmt(state.lvRelaxationRate,2)}× baseline`;
+
  for(const [k,, ,d] of specs){const el=document.querySelector(`[data-metric="${k}"]`);if(el)el.textContent=fmt(state[k],d);}
  const tamponade=state.effusionVolume>1.1||['pericardial','drainage'].includes($('intervention').value);$('pv-pressure-control').hidden=!tamponade;if(!tamponade)$('pv-pressure').value='intracavitary';
  const t=state.time; $('clock').textContent=`${String(Math.floor(t/60)).padStart(2,'0')}:${(t%60).toFixed(1).padStart(4,'0')}`;
  $('status').textContent=state.limit ? 'Model boundary reached' : running ? (speed===1?'Running · Real time (1×)':`Running · Accelerated (${speed}×)`) : 'Simulation paused';
  $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'clamped at current tone'} · Parasympathetic feedback ${state.vagalFeedbackEnabled?'active':'clamped at current tone'}.`;
- $('run').textContent=running?'Ⅱ Pause experiment':'▶ Run experiment';
+ $('run').textContent=running?'Ⅱ Pause simulator':'▶ Start simulator';
  $('warning').hidden=!state.limit; $('warning').textContent=state.limit || '';
  if(deliverySpec){
  const actual = state.intervention?.deliveredMl ?? (deliverySpec.type==='hemorrhage' ? Math.max(0,state.removedBlood-deliverySpec.startRemoved) : deliverySpec.type==='bloodInfusion' ? Math.max(0,state.bloodVolume-deliverySpec.startBlood) : deliverySpec.type==='pericardialInfusion' ? Math.max(0,state.effusionVolume-deliverySpec.startEffusion) : Math.max(0,deliverySpec.startEffusion-state.effusionVolume));
@@ -54,9 +57,9 @@ function makeBaseline(){
 }
 function capture(){
  history.push(plotSample(state));
- if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure'].map(k=>[k,state[k]])));lastExport=state.time;}
+ if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure','tone','vagalDrive','lvRelaxationRate'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
-function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-stiffness').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
+function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-stiffness').value='1';$('lv-relaxation').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
  if(!Number.isFinite(volumeMl)||volumeMl<=0||volumeMl>5000||!Number.isFinite(rateMlMin)||rateMlMin<=0||rateMlMin>10000){$('delivery').textContent='Use a volume above 0 and at most 5,000 mL; rate must be 1–10,000 mL/min.';return;}
  deliverySpec={type,volumeMl,rateMlMin,startRemoved:state.removedBlood,startBlood:state.bloodVolume,startEffusion:state.effusionVolume};
@@ -69,8 +72,12 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
  const left=45,right=w-17,top=22,bottom=h-36;const X=x=>left+(x-xMin)/(xMax-xMin)*(right-left),Y=y=>bottom-(y-yMin)/(yMax-yMin)*(bottom-top);
  ctx.font='10px -apple-system, sans-serif';ctx.fillStyle=colors.text;ctx.strokeStyle=colors.grid;ctx.lineWidth=1;
- for(let i=0;i<=4;i++){let y=yMin+(yMax-yMin)*i/4;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);if(id!=='pressures'){let x=xMin+(xMax-xMin)*i/4;ctx.textAlign='center';ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}}
- if(id==='pressures'){ctx.strokeStyle=colors.text;ctx.textAlign='center';for(let second=0;second<=10;second++){ctx.beginPath();ctx.moveTo(X(second),bottom);ctx.lineTo(X(second),bottom+(second%5===0?6:3));ctx.stroke();if(second%5===0)ctx.fillText(second,X(second),bottom+16);}}
+ const pressurePlot=['pressures','pv','filling'].includes(id),timePlot=['pressures','filling'].includes(id);
+ const yTicks=pressurePlot?(id==='filling'?[-10,0,10,20,30]:[-10,0,60,120,180]):Array.from({length:5},(_,i)=>yMin+(yMax-yMin)*i/4);
+ for(const y of yTicks){ctx.strokeStyle=y===0?'#aebdc4':colors.grid;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);}
+ ctx.textAlign='center';
+ if(timePlot){ctx.strokeStyle=colors.text;for(let second=0;second<=10;second++){ctx.beginPath();ctx.moveTo(X(second),bottom);ctx.lineTo(X(second),bottom+(second%5===0?6:3));ctx.stroke();if(second%5===0)ctx.fillText(second,X(second),bottom+16);}}
+ else for(let i=0;i<=4;i++){const x=xMin+(xMax-xMin)*i/4;ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}
  ctx.textAlign='left';ctx.fillText(yLabel,3,10);ctx.textAlign='center';ctx.fillText(xLabel,(left+right)/2,h-3);
  const line=(points,color,dashed=false)=>{ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle=color;ctx.lineWidth=dashed?1.2:1.8;ctx.globalAlpha=dashed?.4:1;ctx.setLineDash(dashed?[4,4]:[]);ctx.beginPath();let active=false;for(const p of points){if(!Number.isFinite(p.x)||!Number.isFinite(p.y)){active=false;continue;}if(!active){ctx.moveTo(X(p.x),Y(p.y));active=true;}else ctx.lineTo(X(p.x),Y(p.y));}ctx.stroke();ctx.restore();};
  const dot=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))return;ctx.fillStyle='#193944';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(x),Y(y),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();};
@@ -80,14 +87,19 @@ function draw(){
  const overlay=$('overlay').checked;const end=Math.max(10,state.time),start=end-10;
  // Fixed axes preserve visual comparisons throughout every experiment.
  const pressureMax=180;
- const wave=chart('pressures',0,10,0,pressureMax,'Time (s)','Pressure (mmHg)');
+ const wave=chart('pressures',0,10,-10,pressureMax,'Time (s)','Pressure (mmHg)');
  for(const [key,color] of [['arterialPressure',colors.arterial],['lvPressure',colors.lv],['laPressure',colors.venous]]){
  if(overlay)wave.line(baseline.map((s,i)=>({x:i*.01,y:s[key]})),color,true);
  wave.line(history.map(s=>({x:s.time-start,y:s[key]})),color);
  }
+ const filling=chart('filling',0,10,-10,30,'Time (s)','Pressure (mmHg)');
+ for(const [key,color] of [['lvPressure',colors.lv],['laPressure',colors.venous]]){
+ if(overlay)filling.line(baseline.map((s,i)=>({x:i*.01,y:s[key]})),color,true);
+ filling.line(history.map(s=>({x:s.time-start,y:s[key]})),color);
+ }
  const transmural=$('pv-pressure').value==='transmural';
  const maxVolume=250;
- const pv=chart('pv',0,maxVolume,0,pressureMax,'LV volume (mL)',transmural?'LV transmural pressure (mmHg)':'LV pressure (mmHg)');
+ const pv=chart('pv',0,maxVolume,-10,pressureMax,'LV volume (mL)',transmural?'LV transmural pressure (mmHg)':'LV pressure (mmHg)');
  const reference=model.ventricularReferenceCurves();
  const offset=transmural?0:(state.meanPericardialPressure??state.pericardialPressure);
  pv.line(reference.diastolic.map(p=>({x:p.x,y:p.y+offset})),colors.venous);pv.line(reference.systolic.map(p=>({x:p.x,y:p.y+offset})),colors.lv);
@@ -107,7 +119,7 @@ function frame(now){
  if(now-drawDue>=16){updateMetrics();draw();drawDue=now;}
  requestAnimationFrame(frame);
 }
-for(const [id,setter] of [['lv-function','setLVFunction'],['lv-stiffness','setLVStiffness']])$(id).addEventListener('change',e=>{model[setter](Number(e.target.value));state=model.snapshot();updateMetrics();draw();});
+for(const [id,setter] of [['lv-function','setLVFunction'],['lv-stiffness','setLVStiffness'],['lv-relaxation','setLVRelaxation']])$(id).addEventListener('change',e=>{model[setter](Number(e.target.value));state=model.snapshot();updateMetrics();draw();});
 $('run').addEventListener('click',()=>{running=!running;previousFrame=performance.now();updateMetrics();});
 $('reset').addEventListener('click',reset);
 $('speed').addEventListener('change',e=>{speed=Number(e.target.value);previousFrame=performance.now();updateMetrics();});
