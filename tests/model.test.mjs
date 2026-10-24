@@ -368,3 +368,18 @@ test('greater passive compliance and faster relaxation remain bounded and conser
  m.setLVStiffness(.5);assert.ok(m.lvPressureVolume(120,0)<baseline);m.setLVRelaxation(2);
  const s=m.advance(180);assert.equal(s.limit,null);checkFinite(s);close(s.bloodVolume,blood,1e-7,'relaxation conserves blood');
 });
+
+
+test('LA c wave is confined to rising isovolumic LV contraction and enters the real LA pressure',()=>{
+ const m=new PhysiologyModel();let found=0;const blood=m.bloodVolume;
+ for(let i=0;i<1500;i++){
+  const p=m.pressures(),la=m.leftAtrialPressure(m.v[7],p[0],p[2],p[8]);
+  close(p[7],la.pressure,1e-12,'LA solver pressure');
+  if(la.cWave>0){found++;assert.ok(m.phase<.19);assert.ok(p[0]>p[7]);assert.ok(p[0]<p[2]);assert.equal(la.aWave,0);assert.ok(la.cWave<=2.5);}
+  m.step(.002);
+ }
+ assert.ok(found>10,'resolved c wave over multiple beats');close(m.bloodVolume,blood,1e-7,'leaflet displacement conserves blood');
+ m.phase=.25;assert.equal(m.leftAtrialPressure(160,100,90,-4).cWave,0,'no c wave during ejection');
+ m.phase=.35;assert.equal(m.leftAtrialPressure(160,30,90,-4).cWave,0,'no second c wave during relaxation');
+ m.phase=.88;assert.ok(m.leftAtrialPressure(160,5,80,-4).aWave>0,'atrial systole remains separate');
+});

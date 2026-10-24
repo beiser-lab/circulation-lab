@@ -108,19 +108,35 @@ export class PhysiologyModel {
     }
     return {diastolic,systolic};
   }
+  leftAtrialPressure(volume,lvPressure,aorticPressure,externalPressure){
+    const distendingVolume=volume-85;
+    const atrialActivation=this.phase>=.78&&this.phase<.98?Math.sin(Math.PI*(this.phase-.78)/.20)**2:0;
+    const reservoir=externalPressure+distendingVolume/8;
+    const aWave=Math.max(0,distendingVolume)*.035*atrialActivation;
+    const base=reservoir+aWave;
+    // Equivalent brief leaflet displacement during rising LV pressure between
+    // mitral closure and aortic opening. This pressure enters the flow solver;
+    // it does not transfer blood or add a display-only waveform.
+    const gradient=aorticPressure-base;
+    const fraction=gradient>0?(lvPressure-base)/gradient:0;
+    const cWave=this.phase<.19&&fraction>0&&fraction<1?Math.min(2.5,gradient/8)*4*fraction*(1-fraction):0;
+    // Reservoir inflow and mitral outflow generate the v wave and y descent.
+    return {pressure:base+cWave,aWave,cWave,reservoir};
+  }
   pressures(){
     const p=this.parameters(),v=this.v;
     const c=this.config;
     const peri=-4+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
     const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-p.v0[1]);
-    return [peri+this.lvPressureVolume(v[0],this.lvActivation()),
+    const lvPressure=peri+this.lvPressureVolume(v[0],this.lvActivation());
+    const aorticPressure=(v[2]-p.v0[2])/1.5+this.aorticClosurePressure();
+    const la=this.leftAtrialPressure(v[7],lvPressure,aorticPressure,peri);
+    return [lvPressure,
       peri+c.rvAlpha*Math.expm1(clamp(c.rvBeta*(v[1]-c.rvUnstressed),-8,8))+c.rvElastance*p.cp*activation*rv,
-      (v[2]-p.v0[2])/1.5+this.aorticClosurePressure(),(v[3]-p.v0[3])/c.systemicCompliance,
+      aorticPressure,(v[3]-p.v0[3])/c.systemicCompliance,
       (v[4]-p.v0[4])/5,(v[5]-p.v0[5])/22,
-      peri+(v[6]-p.v0[6])/18,// Time-varying LA elastance gives late-diastolic atrial contraction.
-      // V-wave filling and y descent emerge from inflow and mitral-valve flow.
-      peri+(v[7]-85)/8+Math.max(0,v[7]-85)*.035*(this.phase>=.78&&this.phase<.98?Math.sin(Math.PI*(this.phase-.78)/.20)**2:0),peri];
+      peri+(v[6]-p.v0[6])/18,la.pressure,peri];
   }
   advance(seconds){
     if(!Number.isFinite(seconds)||seconds<0||seconds>3600)throw new Error('Advance must be 0–3600 seconds');

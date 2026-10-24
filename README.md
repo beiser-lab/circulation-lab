@@ -47,4 +47,4 @@ Pressure plots use −10–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–2
 
 Hemorrhage defaults to 500 mL at 10,000 mL/hour. Pericardial presets target 200 or 400 mL total, including the 1 mL baseline. Pericardial infusion uses an assumed 200 mL/min; custom volume means additional fluid. Large steps with active autonomics may require about two minutes to settle.
 
-The pressure panel includes LA alongside aortic/LV pressure and a magnified filling-pressure view (−10 to 30 mmHg). Both time axes remain fixed at 0, 5, and 10 seconds.
+The pressure panel shows LA alongside aortic/LV pressure on one shared scale. The ten-second time axis remains fixed at 0, 5, and 10 seconds. LA pressure includes atrial contraction (a wave), a brief early-contraction c-wave approximation, and reservoir filling/emptying (v wave and y descent).
