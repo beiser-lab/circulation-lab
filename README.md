@@ -48,3 +48,11 @@ Pressure plots use −10–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–2
 Hemorrhage defaults to 500 mL at 10,000 mL/hour. Pericardial presets target 200 or 400 mL total, including the 1 mL baseline. Pericardial infusion uses an assumed 200 mL/min; custom volume means additional fluid. Large steps with active autonomics may require about two minutes to settle.
 
 The pressure panel shows LA alongside aortic/LV pressure on one shared scale. The ten-second time axis remains fixed at 0, 5, and 10 seconds. LA pressure includes atrial contraction (a wave), a brief early-contraction c-wave approximation, and reservoir filling/emptying (v wave and y descent).
+
+## Feedback and usage
+
+The simulator links to public GitHub issue forms for [bug reports](https://github.com/beiser-lab/circulation-lab/issues/new?template=bug_report.yml) and [suggestions](https://github.com/beiser-lab/circulation-lab/issues/new?template=suggestion.yml). Submitting requires a GitHub account. Reports are reviewed before any changes are made.
+
+To receive notifications, open the repository's **Watch → Custom → Issues** setting (or **All Activity**). Email delivery follows your GitHub notification settings.
+
+[Insights → Traffic](https://github.com/beiser-lab/circulation-lab/graphs/traffic) shows repository visitors over the past 14 days for users with push access. These are **not visits to the published simulator**. No external analytics or simulator visitor counter is installed.
