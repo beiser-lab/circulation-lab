@@ -259,3 +259,18 @@ test('blood volume shifts the vascular curve in parallel and marker lies on both
  for(const state of [base,s]){const p=state.guyton.intersection;assert.ok(p);close(p.y,(state.pms-p.x)/state.rvr,1e-10,'venous intersection');const c=state.guyton.cardiac,i=c.findIndex(q=>q.x>=p.x);const a=c[i-1],b=c[i];close(p.y,a.y+(b.y-a.y)*(p.x-a.x)/(b.x-a.x),1e-10,'cardiac intersection');}
  m.startIntervention({type:'bloodInfusion',volumeMl:500,rateMlMin:500});close(m.advance(60).pms,base.pms,1e-9,'volume restoration');
 });
+
+test('aortic closure produces a pressure notch and rebound during isovolumic relaxation',()=>{
+ const m=new PhysiologyModel(),before=m.bloodVolume;let previous=m.aorticClosureTime,found=false;
+ for(let i=0;i<600;i++){m.advance(.002);if(m.aorticClosureTime!==previous){found=true;break;}}
+ assert.ok(found,'an ejecting beat closes the valve');
+ const samples=[];for(let i=0;i<55;i++)samples.push(m.advance(.002));
+ assert.ok(samples.every(s=>!s.aorticValveOpen),'valve stays closed through recoil');
+ const trough=samples.slice(0,25).reduce((a,b)=>a.arterialPressure<b.arterialPressure?a:b);
+ const rebound=samples.filter(s=>s.time>trough.time).reduce((a,b)=>a.arterialPressure>b.arterialPressure?a:b);
+ assert.ok(rebound.arterialPressure-trough.arterialPressure>1,'visible post-closure rebound');
+ assert.ok(trough.aorticClosurePressure<0,'initial dip');
+ close(rebound.lvVolume,trough.lvVolume,.05,'isovolumic relaxation');
+ close(m.bloodVolume,before,1e-8,'recoil conserves blood volume');
+ m.advance(.2);close(m.aorticClosurePressure(),0,1e-12,'transient decays');
+});

@@ -1,4 +1,4 @@
-import { PhysiologyModel } from './model.js?v=guyton-3';
+import { PhysiologyModel } from './model.js?v=notch-1';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
