@@ -4,3 +4,5 @@
 
 /* UChicago primary palette: Phoenix Maroon, white, and Greystone. */
 header{border-top:6px solid #800000}h1{color:#800000}.brand-icon{border:1px solid #d9d9d9}.notes p:not(.eyebrow),.notes summary{color:#4d4d4d}.notes details{border-color:#d9d9d9}
+
+.autonomic-state{background:white;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}.autonomic-state h3{color:#800000;margin-bottom:12px}.autonomic-selectors{display:flex;gap:22px;flex-wrap:wrap}.autonomic-selectors label{font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px}.autonomic-selectors select{min-width:155px}.autonomic-state .hint{margin-top:12px}@media(max-width:700px){.autonomic-selectors{display:grid;grid-template-columns:1fr}.autonomic-selectors label{justify-content:space-between}}
