@@ -34,7 +34,7 @@ export class PhysiologyModel {
   constructor(parameters={}){this.config={...DEFAULT_PARAMETERS,...parameters};this.reset();}
   reset(){
     this.v=[120,120,842,3050,175,410,80,110];
-    this.lvFunction=1;this.lvStiffness=1;this.pericardiumIntact=true;
+    this.lvFunction=1;this.lvStiffness=1;this.lvRelaxation=1;this.pericardiumIntact=true;
     this.time=0;this.phase=0;this.tone=0;this.vagalDrive=0;this.vagalEnabled=true;this.reflexEnabled=true;this.beatId=0;this.curveCache=null;
     this.effusionVolume=1;this.removedBlood=0;this.intervention=null;this.limit=null;
     this.metrics={sbp:120,dbp:80,map:93,co:5,cvp:4,lvedp:8};
@@ -70,6 +70,15 @@ export class PhysiologyModel {
   get hr(){return clamp(70+this.config.sympatheticHR*this.tone-this.config.vagalHR*this.vagalDrive,35,200);}
   setLVFunction(fraction){if(!Number.isFinite(fraction)||fraction<.1||fraction>1.5)throw new Error('LV function must be 0.1–1.5');this.lvFunction=fraction;}
   setLVStiffness(multiplier){if(!Number.isFinite(multiplier)||multiplier<.5||multiplier>3)throw new Error('LV stiffness must be 0.5–3');this.lvStiffness=multiplier;}
+  setLVRelaxation(multiplier){if(!Number.isFinite(multiplier)||multiplier<.5||multiplier>2)throw new Error('LV relaxation speed must be 0.5–2');this.lvRelaxation=multiplier;}
+  lvActivation(){
+    // Preserve baseline activation; sympathetic stimulation speeds the falling
+    // limb without shifting the passive pressure-volume relationship.
+    const peak=.19,fall=.19/(this.lvRelaxation*(1+.5*this.tone));
+    if(this.phase<peak)return Math.sin(Math.PI*this.phase/(2*peak))**2;
+    if(this.phase<peak+fall)return Math.cos(Math.PI*(this.phase-peak)/(2*fall))**2;
+    return 0;
+  }
   setPericardium(intact){this.pericardiumIntact=Boolean(intact);}
   parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-c.venousRecruitment*this.tone:v),rs:c.systemicResistance*(1+c.sympatheticGain*this.tone),rv:c.venousResistance*(1+.12*this.tone),cp:1+0.55*this.tone};}
   aorticClosurePressure(){
@@ -105,11 +114,13 @@ export class PhysiologyModel {
     const peri=-4+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
     const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-p.v0[1]);
-    return [peri+this.lvPressureVolume(v[0],activation),
+    return [peri+this.lvPressureVolume(v[0],this.lvActivation()),
       peri+c.rvAlpha*Math.expm1(clamp(c.rvBeta*(v[1]-c.rvUnstressed),-8,8))+c.rvElastance*p.cp*activation*rv,
       (v[2]-p.v0[2])/1.5+this.aorticClosurePressure(),(v[3]-p.v0[3])/c.systemicCompliance,
       (v[4]-p.v0[4])/5,(v[5]-p.v0[5])/22,
-      peri+(v[6]-p.v0[6])/18,peri+(v[7]-p.v0[7])/15,peri];
+      peri+(v[6]-p.v0[6])/18,// Time-varying LA elastance gives late-diastolic atrial contraction.
+      // V-wave filling and y descent emerge from inflow and mitral-valve flow.
+      peri+(v[7]-85)/8+Math.max(0,v[7]-85)*.035*(this.phase>=.78&&this.phase<.98?Math.sin(Math.PI*(this.phase-.78)/.20)**2:0),peri];
   }
   advance(seconds){
     if(!Number.isFinite(seconds)||seconds<0||seconds>3600)throw new Error('Advance must be 0–3600 seconds');
@@ -193,7 +204,7 @@ export class PhysiologyModel {
       if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
     }
     this.curveCache={venous,cardiac,intersection,label:'Illustrative cardiac function curve; vascular curve uses systemic compartment parameters. Dot is their intersection, not transient measured CO.'};
-    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
+    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
       contractility:this.config.lvElastance*q.cp*this.lvFunction,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
       lvTransmuralPressure:p[0]-p[8],

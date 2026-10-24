@@ -348,3 +348,23 @@ test('baseline and withheld moderate hemorrhage remain within teaching calibrati
  m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:1000});const s=m.advance(240);
  assert.ok(s.co>3.2&&s.co<4.4);assert.ok(s.map>50&&s.map<70);assert.ok(s.cvp<b.cvp);
 });
+
+
+test('LA contraction generates an a wave and the waveform records true atrial pressure',async()=>{
+ const {plotSample}=await import('../dist/plot-data.js');const m=new PhysiologyModel();
+ m.phase=.76;const before=m.pressures()[7];m.phase=.88;assert.ok(m.pressures()[7]>before+1,'atrial contraction raises pressure at fixed volume');
+ m.reset();const values=[];for(let i=0;i<1000;i++){const s=m.advance(.002);values.push(s.laPressure);assert.equal(plotSample(s).laPressure,s.laPressure);}
+ assert.ok(Math.max(...values)-Math.min(...values)>3.5,'resolved atrial pulsatility');
+});
+test('lusitropy speeds relaxation independently of passive stiffness',()=>{
+ const m=new PhysiologyModel(),passive=m.ventricularReferenceCurves().diastolic;
+ m.phase=.30;const normal=m.lvActivation();m.setLVRelaxation(1.5);assert.ok(m.lvActivation()<normal);
+ assert.deepEqual(m.ventricularReferenceCurves().diastolic,passive);
+ m.setLVRelaxation(1);m.tone=.5;assert.ok(m.lvActivation()<normal);assert.deepEqual(m.ventricularReferenceCurves().diastolic,passive);
+ m.phase=.19;close(m.lvActivation(),1,1e-12,'peak activation unchanged');
+});
+test('greater passive compliance and faster relaxation remain bounded and conserve blood',()=>{
+ const m=new PhysiologyModel();const blood=m.bloodVolume,baseline=m.lvPressureVolume(120,0);
+ m.setLVStiffness(.5);assert.ok(m.lvPressureVolume(120,0)<baseline);m.setLVRelaxation(2);
+ const s=m.advance(180);assert.equal(s.limit,null);checkFinite(s);close(s.bloodVolume,blood,1e-7,'relaxation conserves blood');
+});

@@ -4,7 +4,7 @@ Browser-based cardiovascular physiology teaching prototype for hemorrhage and ca
 
 ## Status
 
-Experimental teaching model with an initial calibration against selected classroom observations. Supports volume interventions, independent Active/Clamped autonomic controls, LV systolic function and stiffness controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
+Experimental teaching model with an initial calibration against selected classroom observations. Supports volume interventions, independent Active/Clamped autonomic controls with relative-state gauges, LV systolic function, stiffness, and relaxation controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
 
 See [CALIBRATION.md](CALIBRATION.md) for equations, measurement conventions, fitting/validation scope, and remaining differences. Severe hemorrhage and severe LV dysfunction remain approximate. Guided clinical cases and exercise are subsequent work.
 
@@ -41,8 +41,10 @@ This repository contains only the independent web application and its tests. Ori
 
 Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve remains illustrative; the marker is its intersection with the vascular curve.
 
-Pressure plots use 0–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–20 mmHg with flow 0–20 L/min. Curves outside these limits are clipped. Intracavitary LV pressure is shared by both plots; the optional transmural selector appears in pericardial experiments. PV references share the solver's pressure equations.
+Pressure plots use −10–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–20 mmHg with flow 0–20 L/min. Curves outside these limits are clipped. Intracavitary LV pressure is shared by both plots; the optional transmural selector appears in pericardial experiments. PV references share the solver's pressure equations.
 
 ### Lab interventions
 
 Hemorrhage defaults to 500 mL at 10,000 mL/hour. Pericardial presets target 200 or 400 mL total, including the 1 mL baseline. Pericardial infusion uses an assumed 200 mL/min; custom volume means additional fluid. Large steps with active autonomics may require about two minutes to settle.
+
+The pressure panel includes LA alongside aortic/LV pressure and a magnified filling-pressure view (−10 to 30 mmHg). Both time axes remain fixed at 0, 5, and 10 seconds.
