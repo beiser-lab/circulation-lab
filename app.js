@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=legacy-active-15';
+import { PhysiologyModel } from './model.js?v=end-systolic-16';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=legacy-active-15';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=end-systolic-16';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -8,14 +8,14 @@ const specs = [
  ['hr','HR','beats/min',0], ['sbp','SBP','mmHg',0], ['dbp','DBP','mmHg',0], ['map','MAP','mmHg',0], ['pulsePressure','Pulse pressure','mmHg',0],
  ['co','Cardiac output','L/min',2], ['pra','Pra (mean)','mmHg',1], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
  ['pms','Pms','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
- ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
+ ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['lvesp','LV end-systolic pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
 ];
 const measureGroups = [
  {title:'Vital Signs',keys:['sbp','dbp','map','pulsePressure','hr']},
- {title:'Cardiac Measures',keys:['co','sv','edv','esv','lvedp','pra','contractility','lvedpTransmural','meanPericardialPressure','effusionVolume']},
+ {title:'Cardiac Measures',keys:['co','sv','edv','esv','lvesp','lvedp','pra','contractility','lvedpTransmural','meanPericardialPressure','effusionVolume']},
  {title:'Vascular Measures',keys:['vr','cvp','svr','pms','rvr','bloodVolume']}
 ];
-const selected = new Set(['sbp','dbp','map','pulsePressure','hr','co','sv','edv','esv','lvedp','pra','contractility','vr','cvp','svr','pms','rvr']);
+const selected = new Set(['sbp','dbp','map','pulsePressure','hr','co','sv','edv','esv','lvesp','lvedp','pra','contractility','vr','cvp','svr','pms','rvr']);
 let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, baselineReference, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
 const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
@@ -35,7 +35,6 @@ function renderMetrics(){
 }
 function updateMetrics(){
  for(const [branch,value] of [['sympathetic',1+state.tone],['parasympathetic',1+state.vagalDrive]]){$(`${branch}-value`).textContent=fmt(value,2);$(`${branch}-gauge`).value=value;}
- $('relaxation-rate').textContent=`Effective relaxation speed: ${fmt(state.lvRelaxationRate,2)}× baseline`;
 
  for(const [k,, ,d] of specs){const el=document.querySelector(`[data-metric="${k}"]`);if(el)el.textContent=fmt(state[k],d);}
  const tamponade=state.effusionVolume>1.1||['pericardial','drainage'].includes($('intervention').value);$('pv-pressure-control').hidden=!tamponade;if(!tamponade)$('pv-pressure').value='intracavitary';
@@ -54,13 +53,13 @@ function updateMetrics(){
 function makeBaseline(){
  const b=new PhysiologyModel(); baseline=[];
  for(let i=0;i<1000;i++){b.advance(.01);const s=b.snapshot();baseline.push(plotSample(s));}
- baselineState=b.snapshot();baselineReference=b.ventricularReferenceCurves();
+ baselineState=b.snapshot();baselineReference={...b.ventricularReferenceCurves(),endSystolic:b.endSystolicReference(),endSystolicTransmural:b.endSystolicReference(true)};
 }
 function capture(){
  history.push(plotSample(state));
  if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure','tone','vascularTone','vagalDrive','lvRelaxationRate'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
-function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-compliance').value='1';$('lv-relaxation').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
+function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-compliance').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
  if(!Number.isFinite(volumeMl)||volumeMl<=0||volumeMl>5000||!Number.isFinite(rateMlMin)||rateMlMin<=0||rateMlMin>10000){$('delivery').textContent='Use a volume above 0 and at most 5,000 mL; rate must be 1–10,000 mL/min.';return;}
  deliverySpec={type,volumeMl,rateMlMin,startRemoved:state.removedBlood,startBlood:state.bloodVolume,startEffusion:state.effusionVolume};
@@ -108,13 +107,16 @@ function draw(){
  if(overlay&&baselineReference){
   const baselineOffset=transmural?0:baselineState.meanPericardialPressure;
   pv.line(baselineReference.diastolic.map(p=>({x:p.x,y:p.y+baselineOffset})),colors.venous,true);
-  pv.line(baselineReference.systolic.map(p=>({x:p.x,y:p.y+baselineOffset})),colors.lv,true);
+  const es=transmural?baselineReference.endSystolicTransmural:baselineReference.endSystolic;
+  if(es)pv.line(es.curve,colors.lv,true);
  }
- pv.line(reference.diastolic.map(p=>({x:p.x,y:p.y+offset})),colors.venous);pv.line(reference.systolic.map(p=>({x:p.x,y:p.y+offset})),colors.lv);
+ pv.line(reference.diastolic.map(p=>({x:p.x,y:p.y+offset})),colors.venous);const endSystolic=model.endSystolicReference(transmural);
+ if(endSystolic)pv.line(endSystolic.curve,colors.lv);
  if(overlay)pv.line(pvPoints(baseline,baselineState.beatId-1,transmural),colors.arterial,true);
  // Draw beats separately: never connect the end of one beat to another.
  pv.line(pvPoints(history,state.beatId-1,transmural),colors.arterial,true);
  pv.line(pvPoints(history,state.beatId,transmural),colors.arterial);
+ if(endSystolic)pv.dot(endSystolic.point.x,endSystolic.point.y);
  pv.dot(state.lvVolume,transmural?state.lvTransmuralPressure:state.lvPressure);
  const g=state.guyton;
  if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Venous Return (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);plot.operatingPoint(state.pra,state.co);}
@@ -127,7 +129,7 @@ function frame(now){
  if(now-drawDue>=16){updateMetrics();draw();drawDue=now;}
  requestAnimationFrame(frame);
 }
-for(const [id,setter] of [['lv-function','setLVFunction'],['lv-compliance','setLVCompliance'],['lv-relaxation','setLVRelaxation']])$(id).addEventListener('change',e=>{model[setter](Number(e.target.value));state=model.snapshot();updateMetrics();draw();});
+for(const [id,setter] of [['lv-function','setLVFunction'],['lv-compliance','setLVCompliance']])$(id).addEventListener('change',e=>{model[setter](Number(e.target.value));state=model.snapshot();updateMetrics();draw();});
 $('run').addEventListener('click',()=>{running=!running;previousFrame=performance.now();updateMetrics();});
 $('reset').addEventListener('click',reset);
 $('speed').addEventListener('change',e=>{speed=Number(e.target.value);previousFrame=performance.now();updateMetrics();});
