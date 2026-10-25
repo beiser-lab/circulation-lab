@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=end-systolic-16';
+import { PhysiologyModel } from './model.js?v=end-systolic-17';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=end-systolic-16';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=end-systolic-17';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -116,7 +116,6 @@ function draw(){
  // Draw beats separately: never connect the end of one beat to another.
  pv.line(pvPoints(history,state.beatId-1,transmural),colors.arterial,true);
  pv.line(pvPoints(history,state.beatId,transmural),colors.arterial);
- if(endSystolic)pv.dot(endSystolic.point.x,endSystolic.point.y);
  pv.dot(state.lvVolume,transmural?state.lvTransmuralPressure:state.lvPressure);
  const g=state.guyton;
  if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Venous Return (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);plot.operatingPoint(state.pra,state.co);}
