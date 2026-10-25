@@ -30,8 +30,15 @@ git subtree push --prefix dist origin gh-pages
 
 Phoenix Maroon (#800000), white, and greys follow the UChicago primary color palette referenced by Pritzker's identity guidance. Graph traces use additional contrasting colors. No university logo assets are included.
 
+Neutrals come from a single warm ramp defined at the top of `dist/styles.css`; the guidelines do not permit tints of maroon, so light surfaces are near-whites rather than washed maroon. Chart trace colors are duplicated between the `colors` object in `dist/app.js` and the `--trace-*` variables in `dist/styles.css`, which feed the on-page legends. Keep the two in sync.
+
+Headings are set in Source Serif 4 and interface text in Source Sans 3, loaded from Google Fonts with system fallbacks. These stand in for the licensed UChicago Serif and UChicago Sans Serif faces. Self-hosting the two families would remove the third-party request.
+
+Interface text is 12px or larger, and text colors meet WCAG AA contrast (4.5:1) against their backgrounds.
+
 - https://creative.uchicago.edu/color-system/
 - https://pritzker.uchicago.edu/resources/pritzker-identity-guidelines
+- https://websites.uchicago.edu/policies-standards/web-brand-identity-guidelines/
 
 ## Source scope
 
