@@ -1,6 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PhysiologyModel } from '../dist/model.js';
+import { activeChamberPressure } from '../dist/cardiac-mechanics.js';
+
+test('recovered active chamber law matches legacy documented example and moving reference volume',()=>{
+ const p={a1:4.2,a2:-.013,vdMax:10,vdMin:5};
+ assert.equal(activeChamberPressure(110,0,p),0);
+ close(activeChamberPressure(110,1,p),297.675,1e-10,'documented peak example');
+ close(activeChamberPressure(110,.5,p),146.959375,1e-10,'intermediate activation uses Vd 7.5');
+ close(activeChamberPressure(5,1,p),0,1e-12,'peak active volume intercept');
+ const slope=(activeChamberPressure(110.01,1,p)-activeChamberPressure(109.99,1,p))/.02;
+ close(slope,1.47,1e-9,'local quadratic slope');
+});
+
+test('50 percent LV function halves the active systolic reference and local slope at fixed tone',()=>{
+ const m=new PhysiologyModel();m.setSympatheticFeedback(false);const before=m.ventricularReferenceCurves();
+ const slope=(m.lvActivePressure(120.01,1)-m.lvActivePressure(119.99,1))/.02;
+ m.setLVFunction(.5);const after=m.ventricularReferenceCurves();
+ assert.deepEqual(after.diastolic,before.diastolic);
+ for(let i=0;i<before.systolic.length;i++)close(after.systolic[i].y,.5*before.systolic[i].y,1e-10,'active pressure scaling');
+ close((m.lvActivePressure(120.01,1)-m.lvActivePressure(119.99,1))/.02,slope/2,1e-9,'local slope scaling');
+ m.setLVCompliance(.5);assert.deepEqual(m.ventricularReferenceCurves().systolic,after.systolic,'passive stiffness is excluded from active reference');
+ close(m.lvPressureVolume(120,1),m.lvPressureVolume(120,0)+m.lvActivePressure(120,1),1e-10,'solver includes passive pressure exactly once');
+});
 
 // Behavioral checks for the independent teaching model, not evidence of
 // numerical equivalence to SimBioSys or validation for clinical decisions.

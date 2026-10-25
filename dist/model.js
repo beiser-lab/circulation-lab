@@ -2,6 +2,7 @@
  * Flow follows compartment pressure gradients; all traces use the same state.
  * This is not SimBioSys's engine and is not calibrated for patient prediction.
  */
+import {activeChamberPressure} from './cardiac-mechanics.js?v=legacy-active-15';
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
@@ -15,6 +16,8 @@ export const DEFAULT_PARAMETERS=Object.freeze({
   "venousResistance": 0.01584,
   "lvElastance": 4.0293,
   "lvCurvature": -0.013,
+  "lvActiveVdMax": 10,
+  "lvActiveVdMin": 5,
   "lvAlpha": 1.588,
   "lvBeta": 0.021864,
   "lvUnstressed": 40,
@@ -111,16 +114,26 @@ export class PhysiologyModel {
     // Preserve a smooth tangent extension below the reference volume.
     // Avoid the legacy discontinuous low-volume branch and error-return pressure.
     const passive=c.lvAlpha*(z>0?Math.expm1(Math.min(z,8)):z);
-    const u=Math.max(0,volume-10);
-    const active=this.lvFunction*this.parameters().cp*activation*u*Math.max(.2,c.lvElastance+c.lvCurvature*u);
-    return c.lvPassivePressureOffset+passive+active;
+    return c.lvPassivePressureOffset+passive+this.lvActivePressure(volume,activation);
+  }
+
+  lvActivePressure(volume,activation){
+    const c=this.config,factor=this.lvFunction*this.parameters().cp;
+    // Function and contractility scale both coefficients, not the activation
+    // input: reducing function must not independently move Vd at fixed phase.
+    return activeChamberPressure(volume,activation,{
+      a1:factor*c.lvElastance,a2:factor*c.lvCurvature,
+      vdMax:c.lvActiveVdMax,vdMin:c.lvActiveVdMin
+    });
   }
 
   ventricularReferenceCurves(){
     const diastolic=[],systolic=[];
     for(let x=0;x<=250;x+=1){
       diastolic.push({x,y:this.lvPressureVolume(x,0)});
-      systolic.push({x,y:this.lvPressureVolume(x,1)});
+      // Legacy plotting convention: active relation at peak activation,
+      // separately from passive pressure. The UI adds external pressure once.
+      systolic.push({x,y:this.lvActivePressure(x,1)});
     }
     return {diastolic,systolic};
   }

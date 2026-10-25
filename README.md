@@ -6,6 +6,8 @@ Browser-based cardiovascular physiology teaching prototype for hemorrhage and ca
 
 Experimental teaching model recalibrated against classroom observations and instructor-defined physiological constraints. Supports volume interventions, independent Active/Clamped autonomic controls with relative-state gauges, LV systolic function, compliance, and relaxation controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
 
+The LV active-pressure component uses the recovered SimBioSys quadratic law with an activation-dependent reference volume. Other physiology remains independently modeled. See [MODEL-ARCHITECTURE.md](MODEL-ARCHITECTURE.md) for the boundary for future organ components.
+
 See [CALIBRATION.md](CALIBRATION.md) for equations, measurement conventions, fitting/validation scope, and remaining differences. Severe hemorrhage and severe LV dysfunction remain approximate. Guided clinical cases and exercise are subsequent work.
 
 ## Development

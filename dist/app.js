@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=calibration-14';
+import { PhysiologyModel } from './model.js?v=legacy-active-15';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=calibration-14';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=legacy-active-15';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -16,7 +16,7 @@ const measureGroups = [
  {title:'Vascular Measures',keys:['vr','cvp','svr','pms','rvr','bloodVolume']}
 ];
 const selected = new Set(['sbp','dbp','map','pulsePressure','hr','co','sv','edv','esv','lvedp','pra','contractility','vr','cvp','svr','pms','rvr']);
-let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, lastExport = -1;
+let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, baselineReference, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
 const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
 const fmt = (v,d=1) => Number.isFinite(v) ? v.toFixed(d) : '—';
@@ -54,7 +54,7 @@ function updateMetrics(){
 function makeBaseline(){
  const b=new PhysiologyModel(); baseline=[];
  for(let i=0;i<1000;i++){b.advance(.01);const s=b.snapshot();baseline.push(plotSample(s));}
- baselineState=b.snapshot();
+ baselineState=b.snapshot();baselineReference=b.ventricularReferenceCurves();
 }
 function capture(){
  history.push(plotSample(state));
@@ -105,6 +105,11 @@ function draw(){
  const pv=chart('pv',0,maxVolume,-10,pressureMax,'LV volume (mL)',transmural?'LV transmural pressure (mmHg)':'LV pressure (mmHg)');
  const reference=model.ventricularReferenceCurves();
  const offset=transmural?0:(state.meanPericardialPressure??state.pericardialPressure);
+ if(overlay&&baselineReference){
+  const baselineOffset=transmural?0:baselineState.meanPericardialPressure;
+  pv.line(baselineReference.diastolic.map(p=>({x:p.x,y:p.y+baselineOffset})),colors.venous,true);
+  pv.line(baselineReference.systolic.map(p=>({x:p.x,y:p.y+baselineOffset})),colors.lv,true);
+ }
  pv.line(reference.diastolic.map(p=>({x:p.x,y:p.y+offset})),colors.venous);pv.line(reference.systolic.map(p=>({x:p.x,y:p.y+offset})),colors.lv);
  if(overlay)pv.line(pvPoints(baseline,baselineState.beatId-1,transmural),colors.arterial,true);
  // Draw beats separately: never connect the end of one beat to another.
