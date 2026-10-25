@@ -51,3 +51,7 @@ Sympathetic recruitment of unstressed venous volume now saturates at an effectiv
 The 2 L active-hemorrhage reference now gives CO 2.41 L/min, HR 186/min, MAP 48 mmHg, and SV 13 mL, versus legacy readouts 2.09, 187, 47, and 11. CVP is -3.63 versus -1.8 mmHg and LVEDP -4.41 versus -3 mmHg. Baseline and all 30 screenshot checkpoints were reevaluated. Descriptive mean absolute differences changed: CO 0.31 to 0.25 L/min, HR 8.53 to 7.62/min, MAP 4.44 to 3.84 mmHg, CVP 0.70 to 0.67 mmHg, LVEDP 1.71 to 1.74 mmHg, and Pms 1.54 to 1.71 mmHg. Not every measure improves. At 1.5 L active hemorrhage, MAP moves from 82 to 77 versus a reference of 82 mmHg.
 
 This optimization explicitly used the severe hemorrhage and 25% LV active-autonomic observations; the latter is no longer a withheld fitting checkpoint. All reviewed data are internal calibration evidence, not a blinded validation set. Fitting used shorter delivery protocols followed by settling; final evaluation used the lab-rate protocols. Transient trajectories remain unvalidated. No ischemic injury or additional collapse mechanism was introduced.
+
+## Display and next calibration target
+
+Pulse pressure is displayed in Vital Signs by default and included in CSV exports. It equals the completed-beat SBP minus DBP, in mmHg. The accepted next calibration target is HR above 100/min at 1 L hemorrhage with intact autonomics (approximately 100–120/min); this takes priority over the older table HR of 90. It has not yet been implemented in the current circulation calibration.
