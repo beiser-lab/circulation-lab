@@ -1,14 +1,490 @@
-:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#4d4d4d;background:#f7f7f7;font-synthesis:none;--accent:#800000;--muted:#666666;--border:#d9d9d9}*{box-sizing:border-box}body{margin:0}header{height:88px;background:white;border-bottom:1px solid var(--border);padding:0 4%;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:13px;align-items:center}.brand-icon{background:#ffffff;color:#800000;border-radius:12px;font-size:32px;width:48px;height:48px;text-align:center}h1{font-size:21px;margin:0;letter-spacing:-.5px}.brand p{font-size:12px;margin:5px 0 0;color:var(--muted)}.badge{font-size:10px;letter-spacing:1.2px;color:#86692d;background:#faf4e4;border:1px solid #efe1bb;padding:9px 12px;border-radius:5px}main{max-width:1600px;padding:34px 4% 0;margin:auto}.intro{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:27px}.eyebrow{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#800000;margin:0 0 12px}h2{font-size:29px;font-weight:650;letter-spacing:-1px;margin:0 0 10px}.intro p:not(.eyebrow){font-size:14px;color:var(--muted);max-width:690px;line-height:1.6;margin:0}.clock{text-align:right;min-width:140px}.clock span{display:block;font-size:10px;color:var(--muted);letter-spacing:1px}.clock strong{display:block;font-variant-numeric:tabular-nums;font-size:29px;font-weight:500;letter-spacing:1px;margin:7px 0}.clock #status{letter-spacing:0;color:var(--accent)}button,select,input{font:inherit}button,select,input[type=number]{border:1px solid #d6e0e4;background:white;color:#254452;border-radius:6px;padding:10px 12px;font-size:12px}button{cursor:pointer;font-weight:600;white-space:nowrap}button:hover{background:#f4f4f4;border-color:#737373}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #800000;outline-offset:2px}button.primary{background:var(--accent);border-color:var(--accent);color:white}button.primary:hover{background:#600000}.transport{background:white;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:14px;padding:13px 16px;margin-bottom:22px}.transport label{font-size:12px;display:flex;gap:8px;align-items:center}.transport select{padding:8px}.check{color:#536a77}.check input{accent-color:var(--accent)}.push{margin-left:auto}.workspace{display:grid;grid-template-columns:280px minmax(0,1fr);gap:22px}.card{background:white;border:1px solid var(--border);border-radius:11px;padding:20px;box-shadow:0 2px 4px #15303b03}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:20px}h3{font-size:14px;font-weight:650;margin:0}.step{font-size:10px;font-weight:700;background:#f4f4f4;color:var(--accent);padding:5px;border-radius:4px}.experiment label{display:block;font-size:11px;font-weight:600;margin-bottom:15px}.experiment select,.experiment input{display:block;width:100%;margin-top:7px;padding:10px 8px}.experiment select{font-size:11px}.wide{width:100%;margin-bottom:8px}.subtle{border-color:transparent;color:var(--muted);font-weight:500}.field-row{display:flex;gap:10px}.field-row label{width:50%}.field-row span{float:right;color:var(--muted);font-weight:400}hr{border:0;border-top:1px solid var(--border);margin:17px 0 23px}.delivery{font-size:11px;line-height:1.6;color:#48626f;margin:10px 0}progress{width:100%;height:5px;accent-color:var(--accent)}.hint{font-size:11px;line-height:1.6;color:#666666;margin-bottom:0}.notes{margin-top:18px;background:#f4f4f4;border-color:#d9d9d9}.notes .eyebrow{font-size:9px}.notes h3{line-height:1.5}.notes p:not(.eyebrow){font-size:12px;line-height:1.8;color:#536f79}.notes details{border-top:1px solid #d5e4e3;padding-top:14px;margin-top:17px}.notes summary{font-size:11px;cursor:pointer;color:#315e65}.results{min-width:0}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}.metric{padding:9px 12px 13px;border-right:1px solid #edf0f2}.metric:nth-child(4n){border-right:0}.metric-label{font-size:10px;color:var(--muted);margin-bottom:7px;white-space:nowrap}.metric-value{font-size:27px;font-variant-numeric:tabular-nums;letter-spacing:-1px;font-weight:550}.metric-unit{font-size:10px;color:#85949c;margin-left:5px;letter-spacing:0}.text-button{padding:3px 0;border:0;color:var(--accent);font-size:11px;font-weight:500;margin-left:auto}.chart-card{margin-top:18px;padding:19px 20px 12px}.chart-head{display:flex;justify-content:space-between;gap:15px;align-items:center}.chart-head p{font-size:10px;color:var(--muted);margin:6px 0 10px}.legend{font-size:9px;display:flex;gap:12px;color:#526976}.arterial{color:#800000}.ventricular{color:#a65e00}.venous{color:#155f83}.legend.bottom{justify-content:center;margin:0 0 7px}.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}canvas{width:100%;display:block}.warning{background:#fff4df;border:1px solid #f0dcb0;border-radius:7px;font-size:12px;padding:12px;line-height:1.5}fieldset{border:1px solid var(--border);padding:12px;margin-bottom:15px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}fieldset[hidden]{display:none}fieldset legend,fieldset label{font-size:11px}fieldset input{accent-color:var(--accent)}footer{font-size:10px;color:#87969e;display:flex;justify-content:space-between;padding:26px 0}button:disabled{opacity:.5;cursor:default}@media(min-width:1400px){.workspace{grid-template-columns:300px minmax(0,1fr)}.metric-value{font-size:31px}}@media(max-width:1050px){.transport{flex-wrap:wrap}.workspace{grid-template-columns:240px minmax(0,1fr)}.chart-grid{grid-template-columns:1fr}.legend{gap:7px}.chart-head{flex-wrap:wrap;gap:0}.metrics{grid-template-columns:repeat(3,1fr)}.metric:nth-child(4n){border-right:1px solid #edf0f2}.metric:nth-child(3n){border-right:0}}@media(max-width:700px){header{padding:15px 5%;height:auto}.badge{display:none}main{padding:25px 5% 0}.intro{align-items:flex-start}h2{font-size:24px}.clock{min-width:105px}.clock strong{font-size:22px}.workspace{display:flex;flex-direction:column}.transport{gap:9px}.transport .push{margin-left:0}.metrics{grid-template-columns:repeat(2,1fr)}.metric:nth-child(3n){border-right:1px solid #edf0f2}.metric:nth-child(2n){border-right:0}.chart-grid{grid-template-columns:1fr}aside{display:grid;grid-template-columns:1fr}.notes{display:none}footer{line-height:1.7;display:block}footer span{display:block}fieldset{grid-template-columns:repeat(2,1fr)}}
+/* Circulation Lab
+   UChicago primary palette: Phoenix Maroon, white, and the Greystone neutrals.
+   https://creative.uchicago.edu/color-system/
+   One neutral ramp only. Tints of maroon are not permitted by the guidelines,
+   so light surfaces are warm near-whites rather than washed maroon. */
 
-.model-notice{font-size:11px;color:#80672f;background:#fbf6e9;border:1px solid #eee3c6;border-radius:6px;padding:10px 13px;margin:-5px 0 20px;line-height:1.5}.curve-note{font-size:10px;color:#666666;line-height:1.5;text-align:center;margin:0 0 9px}
+:root{
+  /* Primary palette */
+  --maroon:#800000;
+  --maroon-dark:#5c0000;
+  --greystone:#a6a6a6;
+  --greystone-light:#d9d9d9;
+  --greystone-dark:#737373;
 
-/* UChicago primary palette: Phoenix Maroon, white, and Greystone. */
-header{border-top:6px solid #800000}h1{color:#800000}.brand-icon{border:1px solid #d9d9d9}.notes p:not(.eyebrow),.notes summary{color:#4d4d4d}.notes details{border-color:#d9d9d9}
+  /* Warm neutral ramp. n-50 and lighter are surfaces; n-60 and darker are text. */
+  --n-00:#ffffff;
+  --n-05:#faf9f8;
+  --n-10:#f3f1f0;
+  --n-20:#e6e3e1;
+  --n-30:#d9d9d9;
+  --n-50:#a6a6a6;
+  --n-60:#737373;
+  --n-70:#5a5a5a;
+  --n-80:#3d3b3a;
+  --n-90:#1f1e1d;
 
-.autonomic-state{background:white;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}.autonomic-state h3{color:#800000;margin-bottom:12px}.autonomic-selectors{display:flex;gap:22px;flex-wrap:wrap}.autonomic-selectors label{font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px}.autonomic-selectors select{min-width:155px}.autonomic-state .hint{margin-top:12px}@media(max-width:700px){.autonomic-selectors{display:grid;grid-template-columns:1fr}.autonomic-selectors label{justify-content:space-between}}
+  /* Instrument band */
+  --band:#1f1e1d;
+  --band-line:rgba(255,255,255,.13);
+  --band-text:rgba(255,255,255,.92);
+  --band-label:rgba(255,255,255,.58);
 
-.measure-toolbar{display:flex;justify-content:flex-end;margin-bottom:6px}.measure-group+.measure-group{border-top:1px solid var(--border);margin-top:12px;padding-top:16px}.measure-group h3{color:var(--accent);margin-bottom:10px}.metric-label{white-space:normal;line-height:1.4}#display-options[hidden]{display:none}#pv-pressure-control{font-size:12px;margin:0 0 18px}#pv-pressure-control:not([hidden]){display:flex;align-items:center;gap:12px}.chart-grid .chart-head{margin-bottom:10px}
+  /* Advisory band */
+  --advise-bg:#fdf8ea;
+  --advise-line:#eadfc0;
+  --advise-text:#6d5410;
+  --advise-mark:#b98b1f;
 
-.autonomic-readout{display:inline-flex;align-items:center;gap:8px}.autonomic-readout output{font-variant-numeric:tabular-nums;font-size:16px;min-width:36px}.autonomic-readout meter{width:65px;height:12px}@media(max-width:700px){.autonomic-selectors label{flex-wrap:wrap}}
+  /* Chart traces. Mirrors the colors object in app.js; keep the two in sync. */
+  --trace-arterial:#800000;
+  --trace-ventricular:#155f83;
+  --trace-venous:#946916;
 
-.feedback-panel{margin-top:24px;padding:20px;border:1px solid #ddd;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.feedback-panel h3{margin:0 0 8px}.feedback-panel p{font-size:12px;margin:0;color:#666}.feedback-panel nav{display:flex;gap:18px;flex-wrap:wrap}.feedback-panel a{color:#800000;font-size:13px;text-underline-offset:3px}.feedback-panel a:focus-visible{outline:2px solid #800000;outline-offset:5px}
+  --radius:4px;
+  --sans:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+
+  font-family:var(--sans);
+  font-size:15px;
+  color:var(--n-80);
+  background:var(--n-10);
+  font-synthesis:none;
+}
+
+*{box-sizing:border-box}
+body{margin:0;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+/* ---------- Header ---------- */
+
+header{
+  background:var(--n-00);
+  border-top:6px solid var(--maroon);
+  border-bottom:1px solid var(--n-20);
+  padding:22px 4%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+.brand{display:flex;gap:14px;align-items:center}
+.brand-icon{
+  flex:none;
+  width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;line-height:1;
+  color:var(--maroon);
+  background:var(--n-00);
+  border:1px solid var(--n-30);
+  border-radius:var(--radius);
+}
+h1{
+  font-family:var(--serif);
+  font-size:26px;
+  font-weight:600;
+  line-height:1.15;
+  letter-spacing:-.005em;
+  margin:0;
+  color:var(--maroon);
+}
+.brand p{font-size:13px;margin:4px 0 0;color:var(--n-60)}
+.badge{
+  font-size:12px;
+  letter-spacing:.04em;
+  color:var(--advise-text);
+  background:var(--advise-bg);
+  border:1px solid var(--advise-line);
+  padding:5px 11px;
+  border-radius:var(--radius);
+  white-space:nowrap;
+}
+
+main{max-width:1400px;padding:30px 4% 0;margin:auto}
+
+/* ---------- Intro ---------- */
+
+.intro{display:flex;justify-content:space-between;gap:28px;align-items:flex-end;margin-bottom:24px}
+.eyebrow{
+  font-size:12px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  font-weight:600;
+  color:var(--maroon);
+  margin:0 0 10px;
+}
+h2{
+  font-family:var(--serif);
+  font-size:32px;
+  font-weight:600;
+  letter-spacing:-.01em;
+  line-height:1.15;
+  margin:0 0 10px;
+  color:var(--n-90);
+}
+.intro p:not(.eyebrow){font-size:15px;color:var(--n-70);max-width:66ch;line-height:1.6;margin:0}
+.clock{text-align:right;min-width:150px;flex:none}
+.clock span{display:block;font-size:12px;color:var(--n-60);letter-spacing:.07em;text-transform:uppercase}
+.clock strong{
+  display:block;
+  font-variant-numeric:tabular-nums lining-nums;
+  font-size:30px;
+  font-weight:400;
+  letter-spacing:.01em;
+  line-height:1.1;
+  margin:6px 0 4px;
+  color:var(--n-90);
+}
+.clock #status{letter-spacing:0;text-transform:none;color:var(--maroon);font-size:13px}
+
+/* ---------- Controls, shared ---------- */
+
+button,select,input{font:inherit}
+button,select,input[type=number]{
+  border:1px solid var(--n-30);
+  background:var(--n-00);
+  color:var(--n-80);
+  border-radius:var(--radius);
+  padding:9px 12px;
+  font-size:14px;
+}
+button{cursor:pointer;font-weight:600;white-space:nowrap}
+button:hover{background:var(--n-10);border-color:var(--greystone-dark)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{
+  outline:3px solid var(--maroon);
+  outline-offset:2px;
+}
+button.primary{background:var(--maroon);border-color:var(--maroon);color:#fff}
+button.primary:hover{background:var(--maroon-dark);border-color:var(--maroon-dark)}
+button:disabled{opacity:.45;cursor:default}
+button:disabled:hover{background:var(--n-00);border-color:var(--n-30)}
+
+/* ---------- Instrument band: transport + autonomic state read as one unit ---------- */
+
+.transport,
+.autonomic-state{background:var(--band);color:var(--band-text);border:0}
+
+.transport{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:14px 20px;
+  margin-bottom:0;
+  border-radius:6px 6px 0 0;
+}
+.transport label{font-size:14px;display:flex;gap:9px;align-items:center;color:var(--band-text)}
+.check{color:var(--band-text)}
+.check input{accent-color:var(--maroon)}
+.push{margin-left:auto}
+
+.autonomic-state{
+  padding:0 20px 16px;
+  margin-bottom:12px;
+  border-radius:0 0 6px 6px;
+}
+.autonomic-state h3{
+  color:var(--band-label);
+  font-family:var(--sans);
+  font-size:12px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  font-weight:600;
+  margin:0 0 12px;
+  padding-top:14px;
+  border-top:1px solid var(--band-line);
+}
+.autonomic-selectors{display:flex;gap:28px;flex-wrap:wrap}
+.autonomic-selectors label{
+  font-size:14px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:var(--band-text);
+}
+.autonomic-selectors select{min-width:150px}
+.autonomic-state .hint{margin-top:14px;color:var(--band-label)}
+
+/* Form controls sitting on the dark band */
+.transport select,
+.autonomic-selectors select{
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.28);
+  color:var(--band-text);
+}
+.transport select:hover,
+.autonomic-selectors select:hover{background:rgba(255,255,255,.14)}
+.transport button{
+  background:transparent;
+  border-color:rgba(255,255,255,.3);
+  color:var(--band-text);
+}
+.transport button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5)}
+.transport button.primary{background:var(--maroon);border-color:#9c2a2a;color:#fff}
+.transport button.primary:hover{background:#962222;border-color:#b33a3a}
+.transport button:disabled:hover{background:transparent;border-color:rgba(255,255,255,.3)}
+
+.autonomic-readout{display:inline-flex;align-items:center;gap:9px}
+.autonomic-readout output{
+  font-variant-numeric:tabular-nums lining-nums;
+  font-size:17px;
+  font-weight:400;
+  min-width:40px;
+}
+.autonomic-readout meter{width:72px;height:6px}
+
+/* Native meters render green by default, which fights the maroon. */
+meter{-webkit-appearance:none;appearance:none;border:0;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+meter::-webkit-meter-bar{background:rgba(255,255,255,.2);border:0;border-radius:3px}
+meter::-webkit-meter-optimum-value,
+meter::-webkit-meter-suboptimum-value,
+meter::-webkit-meter-even-less-good-value{background:#c98d8d;border-radius:3px}
+meter::-moz-meter-bar{background:#c98d8d;border-radius:3px}
+
+/* ---------- Advisory notices ---------- */
+
+#feedback-status,
+.model-notice{
+  font-size:13px;
+  line-height:1.5;
+  color:var(--advise-text);
+  background:var(--advise-bg);
+  border:1px solid var(--advise-line);
+  padding:9px 13px;
+  margin:0 0 8px;
+}
+#feedback-status{border-radius:var(--radius) var(--radius) 0 0;border-bottom:0;margin-bottom:0}
+.model-notice{border-radius:0 0 var(--radius) var(--radius);margin-bottom:22px}
+
+.warning{
+  background:var(--advise-bg);
+  border:1px solid var(--advise-line);
+  color:var(--advise-text);
+  border-radius:var(--radius);
+  font-size:14px;
+  padding:12px 14px;
+  line-height:1.5;
+  margin-top:18px;
+}
+
+/* ---------- Workspace: controls recessed, results elevated ---------- */
+
+.workspace{display:grid;grid-template-columns:304px minmax(0,1fr);gap:24px;align-items:start}
+.results{min-width:0}
+
+.card{
+  background:var(--n-00);
+  border:1px solid var(--n-20);
+  border-radius:6px;
+  padding:20px;
+}
+
+/* The control column is the recessed plane; the data is the bright one. */
+aside .card{background:var(--n-05);border-color:var(--n-20)}
+
+.section-title{display:flex;align-items:baseline;gap:10px;margin-bottom:18px}
+h3{font-family:var(--serif);font-size:18px;font-weight:600;margin:0;color:var(--n-90)}
+.step{
+  font-size:12px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.06em;
+  background:none;
+  color:var(--maroon);
+  padding:0;
+}
+
+.experiment label{display:block;font-size:13px;font-weight:600;color:var(--n-80);margin-bottom:14px}
+.experiment select,
+.experiment input{display:block;width:100%;margin-top:6px;padding:9px 10px;font-size:14px}
+.field-row{display:flex;gap:10px}
+.field-row label{width:50%}
+.field-row span{float:right;color:var(--n-60);font-weight:400}
+.wide{width:100%;margin-bottom:8px}
+.subtle{background:var(--n-00);border-color:var(--n-30);color:var(--n-70);font-weight:500}
+.subtle:hover{background:var(--n-10);border-color:var(--greystone-dark)}
+
+hr{border:0;border-top:1px solid var(--n-20);margin:20px 0 24px}
+.delivery{font-size:13px;line-height:1.55;color:var(--n-70);margin:12px 0 8px}
+progress{width:100%;height:6px;accent-color:var(--maroon)}
+.hint{font-size:13px;line-height:1.55;color:var(--n-60);margin-bottom:0}
+.hint+.hint{margin-top:10px}
+
+/* ---------- Notes card ---------- */
+
+.notes{margin-top:18px}
+aside .notes.card{background:var(--n-10);border-color:var(--n-20)}
+.notes .eyebrow{font-size:12px}
+.notes h3{line-height:1.3;margin-bottom:8px}
+.notes p:not(.eyebrow){font-size:14px;line-height:1.7;color:var(--n-70)}
+.notes details{border-top:1px solid var(--n-20);padding-top:14px;margin-top:16px}
+.notes summary{font-size:13px;cursor:pointer;color:var(--maroon);font-weight:500}
+
+/* ---------- Measures ---------- */
+
+.measures{padding:20px 20px 8px}
+.measure-toolbar{display:flex;justify-content:flex-end;margin-bottom:4px}
+.text-button{
+  padding:3px 0;
+  border:0;
+  background:none;
+  color:var(--maroon);
+  font-size:13px;
+  font-weight:600;
+  margin-left:auto;
+}
+.text-button:hover{background:none;text-decoration:underline;text-underline-offset:3px}
+
+.measure-group{margin-bottom:22px}
+.measure-group+.measure-group{border-top:0;margin-top:0;padding-top:0}
+.measure-group>h3{
+  font-family:var(--sans);
+  font-size:12px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  font-weight:600;
+  color:var(--n-60);
+  margin:0 0 12px;
+  padding-bottom:7px;
+  border-bottom:2px solid var(--maroon);
+}
+
+/* Hairlines come from a ring on each cell rather than a background showing through
+   the gaps, so a short final row leaves white space instead of grey blocks. */
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:1px;
+  margin:1px;
+}
+/* Column layout keeps values on a shared baseline when a label wraps to two lines,
+   without padding every short label out to two lines' height. */
+.metric{
+  background:var(--n-00);
+  box-shadow:0 0 0 1px var(--n-20);
+  padding:11px 13px 13px;
+  border-right:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:8px;
+}
+.metric-label{
+  font-size:13px;
+  color:var(--n-60);
+  margin-bottom:0;
+  white-space:normal;
+  line-height:1.35;
+}
+.metric-value{
+  font-variant-numeric:tabular-nums lining-nums;
+  font-size:27px;
+  font-weight:400;
+  line-height:1.05;
+  letter-spacing:0;
+  color:var(--n-90);
+}
+.metric-unit{
+  font-size:12px;
+  font-weight:400;
+  color:var(--n-60);
+  margin-left:5px;
+  letter-spacing:0;
+  font-variant-numeric:normal;
+}
+
+#display-options[hidden]{display:none}
+fieldset{
+  border:1px solid var(--n-20);
+  border-radius:var(--radius);
+  padding:14px;
+  margin:0 0 16px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+fieldset[hidden]{display:none}
+fieldset legend{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--n-60);padding:0 6px}
+fieldset label{font-size:13px;color:var(--n-80)}
+fieldset input{accent-color:var(--maroon)}
+#pv-pressure-control{font-size:13px;margin:0 0 18px}
+#pv-pressure-control:not([hidden]){display:flex;align-items:center;gap:12px}
+
+/* ---------- Charts ---------- */
+
+.chart-card{margin-top:18px;padding:18px 20px 12px}
+.chart-head{display:flex;justify-content:space-between;gap:18px;align-items:baseline}
+.chart-head p{font-size:13px;color:var(--n-60);margin:3px 0 12px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.chart-grid .chart-head{margin-bottom:10px}
+canvas{width:100%;display:block}
+
+.legend{font-size:13px;display:flex;gap:16px;color:var(--n-60);flex-wrap:wrap}
+.legend.bottom{justify-content:center;margin:2px 0 7px}
+.arterial{color:var(--trace-arterial)}
+.ventricular{color:var(--trace-ventricular)}
+.venous{color:var(--trace-venous)}
+.curve-note{font-size:13px;color:var(--n-60);line-height:1.5;text-align:center;margin:0 0 9px}
+
+/* ---------- Feedback and footer ---------- */
+
+.feedback-panel{
+  margin-top:24px;
+  padding:20px;
+  border:1px solid var(--n-20);
+  border-radius:6px;
+  background:var(--n-00);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  flex-wrap:wrap;
+}
+.feedback-panel h3{margin:0 0 6px}
+.feedback-panel p{font-size:13px;margin:0;color:var(--n-60)}
+.feedback-panel nav{display:flex;gap:20px;flex-wrap:wrap}
+.feedback-panel a{color:var(--maroon);font-size:14px;font-weight:600;text-underline-offset:3px}
+
+footer{
+  font-size:13px;
+  color:var(--n-60);
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  padding:26px 0;
+  margin-top:8px;
+  border-top:1px solid var(--n-20);
+}
+
+/* ---------- Responsive ---------- */
+
+@media(max-width:1050px){
+  .transport{flex-wrap:wrap}
+  .workspace{grid-template-columns:260px minmax(0,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .legend{gap:12px}
+  .chart-head{flex-wrap:wrap;gap:0}
+  .metrics{grid-template-columns:repeat(3,1fr)}
+  fieldset{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:700px){
+  header{padding:18px 5%;flex-wrap:wrap;gap:14px}
+  .badge{display:none}
+  main{padding:24px 5% 0}
+  .intro{flex-direction:column;align-items:flex-start;gap:18px}
+  h2{font-size:26px}
+  .clock{text-align:left;min-width:0}
+  .clock strong{font-size:26px}
+  .workspace{display:flex;flex-direction:column}
+  .transport{gap:10px}
+  .transport .push{margin-left:0}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  aside{display:grid;grid-template-columns:1fr}
+  .notes{display:none}
+  .autonomic-selectors{display:grid;grid-template-columns:1fr}
+  .autonomic-selectors label{justify-content:space-between;flex-wrap:wrap}
+  footer{display:block;line-height:1.7}
+  footer span{display:block}
+  fieldset{grid-template-columns:repeat(2,1fr)}
+}

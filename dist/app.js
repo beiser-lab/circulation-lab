@@ -18,7 +18,7 @@ const measureGroups = [
 const selected = new Set(['sbp','dbp','map','hr','co','sv','edv','esv','lvedp','contractility','vr','cvp','svr','pms','rvr']);
 let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
-const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
+const colors = {arterial:'#800000',lv:'#155f83',venous:'#946916',grid:'#e6e3e1',text:'#737373'};
 const fmt = (v,d=1) => Number.isFinite(v) ? v.toFixed(d) : '—';
 
 function setupMetrics(){
@@ -70,17 +70,17 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
  const canvas=$(id),r=canvas.getBoundingClientRect(),w=r.width,h=Number(canvas.dataset.logicalHeight || (canvas.dataset.logicalHeight=canvas.getAttribute('height'))),dpr=window.devicePixelRatio||1;
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);canvas.style.height=h+'px';}
  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
- const left=45,right=w-17,top=22,bottom=h-36;const X=x=>left+(x-xMin)/(xMax-xMin)*(right-left),Y=y=>bottom-(y-yMin)/(yMax-yMin)*(bottom-top);
- ctx.font='10px -apple-system, sans-serif';ctx.fillStyle=colors.text;ctx.strokeStyle=colors.grid;ctx.lineWidth=1;
+ const left=45,right=w-17,top=28,bottom=h-36;const X=x=>left+(x-xMin)/(xMax-xMin)*(right-left),Y=y=>bottom-(y-yMin)/(yMax-yMin)*(bottom-top);
+ ctx.font='11px "Source Sans 3", -apple-system, sans-serif';ctx.fillStyle=colors.text;ctx.strokeStyle=colors.grid;ctx.lineWidth=1;
  const pressurePlot=['pressures','pv'].includes(id),timePlot=id==='pressures';
  const yTicks=pressurePlot?[-10,0,60,120,180]:Array.from({length:5},(_,i)=>yMin+(yMax-yMin)*i/4);
- for(const y of yTicks){ctx.strokeStyle=y===0?'#aebdc4':colors.grid;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);}
+ for(const y of yTicks){ctx.strokeStyle=y===0?'#a6a6a6':colors.grid;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);}
  ctx.textAlign='center';
  if(timePlot){ctx.strokeStyle=colors.text;for(let second=0;second<=10;second++){ctx.beginPath();ctx.moveTo(X(second),bottom);ctx.lineTo(X(second),bottom+(second%5===0?6:3));ctx.stroke();if(second%5===0)ctx.fillText(second,X(second),bottom+16);}}
  else for(let i=0;i<=4;i++){const x=xMin+(xMax-xMin)*i/4;ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}
- ctx.textAlign='left';ctx.fillText(yLabel,3,10);ctx.textAlign='center';ctx.fillText(xLabel,(left+right)/2,h-3);
+ ctx.textAlign='left';ctx.fillText(yLabel,3,11);ctx.textAlign='center';ctx.fillText(xLabel,(left+right)/2,h-3);
  const line=(points,color,dashed=false,width=1.8)=>{ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle=color;ctx.lineWidth=dashed?1.2:width;ctx.globalAlpha=dashed?.4:1;ctx.setLineDash(dashed?[4,4]:[]);ctx.beginPath();let active=false;for(const p of points){if(!Number.isFinite(p.x)||!Number.isFinite(p.y)){active=false;continue;}if(!active){ctx.moveTo(X(p.x),Y(p.y));active=true;}else ctx.lineTo(X(p.x),Y(p.y));}ctx.stroke();ctx.restore();};
- const dot=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))return;ctx.fillStyle='#193944';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(x),Y(y),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();};
+ const dot=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))return;ctx.fillStyle='#1f1e1d';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(x),Y(y),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();};
  return {line,dot};
 }
 function draw(){
