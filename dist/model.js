@@ -2,7 +2,7 @@
  * Flow follows compartment pressure gradients; all traces use the same state.
  * This is not SimBioSys's engine and is not calibrated for patient prediction.
  */
-import {activeChamberPressure} from './cardiac-mechanics.js?v=end-systolic-17';
+import {activeChamberPressure} from './cardiac-mechanics.js?v=graph-cleanup-18';
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.

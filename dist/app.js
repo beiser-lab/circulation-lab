@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=end-systolic-17';
+import { PhysiologyModel } from './model.js?v=graph-cleanup-18';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=end-systolic-17';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=graph-cleanup-18';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -86,7 +86,6 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
   ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle='#617b86';ctx.lineWidth=1;ctx.setLineDash([3,3]);
   ctx.beginPath();ctx.moveTo(X(x),bottom);ctx.lineTo(X(x),Y(y));ctx.lineTo(left,Y(y));ctx.stroke();ctx.restore();
   if(x>=xMin&&x<=xMax&&y>=yMin&&y<=yMax)dot(x,y);
-  ctx.fillStyle=colors.text;ctx.textAlign='right';ctx.fillText(`Pra ${fmt(x,1)} mmHg · CO ${fmt(y,2)} L/min`,right,top+12);
  };
  return {line,dot,operatingPoint};
 }

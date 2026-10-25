@@ -67,4 +67,4 @@ To receive notifications, open the repository's **Watch → Custom → Issues** 
 
 [Insights → Traffic](https://github.com/beiser-lab/circulation-lab/graphs/traffic) shows repository visitors over the past 14 days for users with push access. These are **not visits to the published simulator**. No external analytics or simulator visitor counter is installed.
 
-Guyton axes use Pra ticks -5, 0, 5, 10, 15, 20 mmHg and flow ticks 0, 5, 10, 15, 20 L/min. PV volume ticks are 0, 50, 100, 150, 200, 250 mL. The Guyton marker uses displayed mean Pra and CO, with dashed axis guides and numerical annotation. It is not an equilibrium-intersection marker during transients.
+Guyton axes use Pra ticks -5, 0, 5, 10, 15, 20 mmHg and flow ticks 0, 5, 10, 15, 20 L/min. PV volume ticks are 0, 50, 100, 150, 200, 250 mL. The Guyton marker uses displayed mean Pra and CO, with dashed axis guides. It is not an equilibrium-intersection marker during transients.
