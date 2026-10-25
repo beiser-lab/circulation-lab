@@ -1,65 +1,81 @@
-# Initial classroom calibration — 24 October 2026
+# Classroom calibration — 25 October 2026
 
-This release calibrates an independent eight-compartment educational circulation model against selected classroom simulator observations. It is not a reconstruction of the complete SimBioSys engine, a patient model, or a validated model of myocardial infarction.
+Circulation Lab is an independent eight-compartment educational model. The calibration balances classroom experiments, an older teaching table, and instructor-approved physiological constraints. It is not the complete SimBioSys engine or a validated patient model.
 
-## Equations and measurements
+## Current calibration
 
-All blood flows follow pressure gradients through positive resistances. Valve flows are one-way. Interventions conserve circulating blood except for the prescribed intravascular addition/removal. Pericardial fluid is separate.
+Resting values are approximately CO 5.42 L/min, HR 70/min, MAP 87 mmHg, mean Pra/CVP 4.83 mmHg, Pms 7.20 mmHg, LVEDP 6.93 mmHg, EDV 117.5 mL, and ESV 40.2 mL. Minimum resting intracavitary LV pressure is approximately +0.19 mmHg. This is a solver result, not a graphical zero clamp. Subatmospheric pressures remain possible during volume depletion and altered ventricular properties.
 
-LV passive pressure uses alpha*(exp(beta*stiffness*(V-V0))-1), with a continuous tangent extension below V0. Active pressure uses functionalFraction*autonomicContractility*activation*u*(A1+A2*u), with a positive-slope-factor guard outside the calibrated volume range. These equation families are informed by legacy documentation/recovery; the activation waveform, low-volume continuation, parameters, and complete circuit remain independent approximations. The legacy activation-dependent unstressed-volume equation has not been fully implemented. Systolic plotting curves are maximum-activation envelopes, not independently identified experimental ESPVRs.
+The recalibration changes passive LV mechanics, RV active elastance, systemic volume/compliance/resistance parameters, and autonomic gains. It preserves pressure-driven flow, volume conservation, shared waveform/PV pressures, and same-beat CO = SV × HR / 1000. MAP remains the time average of the arterial waveform. Systemic venous return is measured independently and may differ from LV output during transients.
 
-LV systolic function and diastolic stiffness have separate controls. The pericardium has an exponential constraint dependent on chamber and effusion volumes, with a -4 mmHg external-pressure reference. Baseline effusion is 1 mL. An internal pericardium-removal API is tested, but a guided pericardiectomy case is not yet exposed.
+At the current 500 mL/min hemorrhage rate, settled 1 L loss produces approximately HR 102/min, CO 5.62 L/min, and MAP 86 mmHg. Settled 2 L loss produces approximately HR 175/min, CO 2.46 L/min, and MAP 48 mmHg. The instructor's HR above 100/min at 1 L takes priority over the lower legacy HR. Moderate loss can produce a small CO overshoot; pulse pressure narrows. The model does not represent irreversible tissue injury.
 
-Sympathetic and parasympathetic branches can each be Active or Clamped at the current state. The sympathetic target combines arterial-pressure and atrial-distending-pressure deviations, affecting HR, contractility, unstressed venous volume, and resistance. Parasympathetic activity affects HR. Gains are fitted teaching parameters; signed internal drives are not clinical measurements or the original tone units. Approximate 20-second sympathetic and 2-second vagal lags are modeling choices, not recovered legacy time constants. Measured settling behavior is not itself a time constant.
+## Ventricular pressure equations
 
-MAP is the completed-beat time integral of aortic pressure. CO and HR use the same completed-beat duration; CO = SV*HR/1000. EDV and ESV describe that ejection rather than mixing in the next beat's filling volume. Systemic VR is measured independently, so it can differ transiently from LV output. Intracavitary pressure is the default; the transmural selector appears for pericardial interventions.
+The passive LV law is now a generalized exponential:
 
-For the two systemic compliant reservoirs, Pms = (Ca*meanPa + Cv*meanPv)/(Ca+Cv) and RVR = [Rv + Rs*Ca/(Ca+Cv)]/0.06, converting mmHg*s/mL to mmHg*min/L. These are effective systemic-compartment quantities, not total-body equilibrium pressure. Beat averaging suppresses pulse oscillations. Positive resistances avoid reproducing legacy negative-RVR artifacts. Volume redistribution and autonomic recruitment can change Pms without an external volume intervention. The cardiac Guyton curve remains illustrative; its shape is normalized through the current completed-beat (Pra, CO) operating point, not a solved family of steady states. The plotted grid includes the exact measured Pra. The intersection agrees with measured CO/VR at steady state, while transient differences remain possible. HR, contractility and afterload affect the anchor through the circulation solver, not a separate estimate of output.
+```
+z = beta × stiffness × (V − Vref)
+Ppassive = P0 + alpha × expm1(z)              when z > 0
+Ppassive = P0 + alpha × z                    otherwise
+Pintracavitary = Pexternal + Ppassive + Pactive
+```
 
-## Calibration scope
+Default P0 = 3.7504 mmHg, alpha = 1.588 mmHg, beta = 0.021864/mL, and Vref = 40 mL. The exponent is bounded outside the supported range for numerical protection. Vref is a fixed fitting reference, not an anatomical unstressed volume or the zero-pressure volume; the internal configuration name `lvUnstressed` is retained for compatibility. P0 is an independently fitted constitutive pressure intercept, not a recovered SimBioSys constant, a claim about measured myocardial prestress, or a display-only correction. It is added once in the passive law and affects flow, filling, and reference curves. Keeping the steeper exponential response was necessary to avoid flattening the high-volume LV dysfunction response while correcting resting low-volume pressure.
 
-Baseline, clamped hemorrhage, LV function at 50%, and approximately 200/400 mL effusions informed mechanical fitting. Active hemorrhage and the 400 mL effusion informed autonomic fitting. Intermediate 1 L hemorrhage, approximately 300 mL effusion, and 25% LV function were initially withheld from parameter fitting, though reviewed during validation. The later optimization below used the active-autonomic 25% LV checkpoint. This is internal validation, not an independent clinical cohort. Source decks and extracted answer tables remain outside this public repository.
+Active pressure remains functionalFraction × autonomicContractility × activation × u × (A1 + A2 × u), with a positive factor guard outside the supported range. These equation families are informed by legacy documentation and binary analysis; activation timing, low-volume continuation, coefficients and circuit remain independent approximations. The legacy activation-dependent reference-volume law is not fully reproduced. The systolic reference is a maximum-activation envelope, not an independently measured ESPVR.
 
-After the severe-hemorrhage optimization, baseline is approximately CO 5.43 L/min, HR 70/min, waveform MAP 90 mmHg, CVP 3.9 mmHg, LVEDP 6.7 mmHg, Pms 7.8 mmHg, and SV 78 mL. Validation compares averages beginning at 120 seconds after an intervention with later averages; this demonstrates convergence for those tested protocols, not a universal settling guarantee. Simulation playback is 1:1.
+Relative compliance is reciprocal to the passive stiffness parameter. It is not a fixed dV/dP multiplier at every volume. Active relaxation remains separate and speeds with cardiac sympathetic drive. Intracavitary reference curves add the same mean external-pressure reference used for the displayed pressure convention; the optional transmural view removes it.
 
-## Remaining limits
+## Autonomic responses
 
-- At 2 L hemorrhage with active autonomics, CO remains somewhat high (2.41 versus 2.09 L/min); CVP and LVEDP are too negative. Tissue oxygen delivery, ischemic decompensation, and shock progression are not represented.
-- Severe LV impairment produces too little filling-pressure elevation and does not reproduce the legacy preservation/overshoot of output under active autonomics. A functional fraction is not a percentage of infarcted myocardium.
-- Early tamponade reduces output somewhat too early; its HR response is larger than some legacy observations. Pericardial dynamics and respiratory effects remain simplified.
-- Pms and RVR are physically coherent effective circuit quantities; they are deliberately not fitted to contradictory legacy edge values.
-- Exercise, RV injury, dehydration-specific fluid compartments, chronic remodeling, and complete infarct physiology are not implemented or validated.
-- The dicrotic notch remains a reduced closure/recoil approximation, not a wave-propagation model. Pressure axes span -10 to 180 mmHg and volume extends to 250 mL. The shared pressure tracing uses a fixed ten-second time window.
+Each branch can be Active or Clamped. Clamping sympathetic control freezes both cardiac and vascular response states at their current values; it does not reset them to zero. Parasympathetic control remains independent.
 
-Run `npm test` for conservation, numerical-step convergence, pressure/PV consistency, autonomic independence, loading-response direction, and broad calibration bounds. Passing these checks does not establish clinical validity.
+Cardiac sympathetic stimulation uses arterial pressure error plus a bounded atrial-distending-pressure contribution. The latter saturates at an error magnitude of 4.5 mmHg. The vascular resistance response has a separate state driven by arterial pressure error. Both use the existing 20-second response lag. This regional-response approximation prevents the additional filling-pressure signal from automatically raising resistance enough to reverse the expected MAP response to tamponade. It is a fitted reduced-model design, not a recovered legacy autonomic equation. Parasympathetic chronotropy uses a separate two-second lag. Neither lag is equated to an observed settling time.
 
+The displayed sympathetic index represents cardiac drive; CSV exports also include `vascularTone`. All indices are relative model states, not clinical measurements or percentages of neural activity. Venous recruitment still uses a finite **228.8 mL effective circuit reserve**. This is not the instructor's approximately 1 L anatomical recruitable-volume concept, which remains a structural-model limitation requiring a richer venous reservoir model. Outside exercise, effective RVR changes remain modest (about 21% in the 2 L active hemorrhage check).
 
-## Atrial waveform and lusitropy update
+## Pericardial and atrial mechanics
 
-LA pressure now uses a passive compliance of 8 mL/mmHg and an unstressed volume of 85 mL, plus a late-diastolic active elastance pulse of 0.035 mmHg/mL over phases 0.78–0.98. Active pressure is applied only to positive distending volume. This is an independent illustrative atrial-contraction mechanism, not a recovered or quantitatively fitted SimBioSys atrial waveform. The a wave is generated by atrial contraction; reservoir filling and mitral emptying generate v-wave/y-descent behavior. A pressure-gated c-wave surrogate represents brief mitral leaflet displacement during rising LV pressure between mitral closure and aortic opening. Its amplitude is capped at 2.5 mmHg and reduced for small LV–aortic pressure gradients. This is a provisional mechanical approximation, not an explicit valve-geometry model or a fitted legacy c wave. Respiratory variation is not represented. The new pressure participates in pulmonary venous and mitral flow, not just rendering.
+The current pericardial model remains an instantaneous exponential constraint on chamber plus effusion volume with a −4 mmHg external reference. Baseline effusion is 1 mL. Capacity is an effective fitted offset; it is not numerically equivalent to the legacy capacity parameter. The pericardium-removal API is tested, but a guided pericardiectomy case is not exposed.
 
-LV relaxation speed changes the falling limb of activation while preserving its peak and passive pressure-volume relation. The multiplier is the manual relaxation setting times (1 + 0.5*sympatheticDrive). That sympathetic gain is provisional. Stiffness now offers 0.5× and 0.75× options as well as the previous higher settings. Relaxation and passive stiffness are distinct; lower stiffness means greater compliance.
+Further binary analysis recovered a legacy pericardial plotting law `100 × expm1(kV) / expm1(kC)` and documented separate filtering of extracardiac pressure. These were **not substituted**: the full pressure update, filter recurrence, cardiac tissue-volume contribution, and reset provenance are not sufficiently recovered for an equivalent implementation. Decompiled evidence is not original source code.
 
-Autonomic gauges display 1 + the internal signed branch deviation, with baseline 1.00. They are arbitrary relative model indices, not percentages of maximal neural activity or measured clinical quantities. Clamping holds the underlying branch state. The gauge values do not feed back into the solver.
+LA pressure still includes passive compliance, late-diastolic contraction, a brief pressure-gated c-wave approximation, and reservoir filling/emptying. The a/c/v features participate in the solver rather than being painted onto the waveform. Respiratory variation, valve geometry and wave propagation are not modeled. The dicrotic notch remains a reduced closure/recoil response.
 
-Exercise remains a proposed extension, not an implemented intervention. A graded dynamic-exercise intensity should combine demand-related reductions in resistance, venous recruitment/muscle-pump effects, and autonomic drive affecting HR, contractility, and relaxation. Active/clamped branches must retain their meaning. Benchmark steady exercise and recovery before combining exercise with volume loss.
+## Comparison scope and tradeoffs
 
-## Severe hemorrhage optimization
+Selected PowerPoint hemorrhage, tamponade and LV-function checkpoints informed fitting. The final fit also used the active rows of the 2017 table as lower-weight targets. Baseline Pra near 5 mmHg, nonnegative resting LV pressure, same-beat identities, narrowing pulse pressure, and HR above 100/min after 1 L hemorrhage were explicit teaching priorities. Inconsistent rounded legacy values were not forced to satisfy mutually incompatible targets; flagged severe-hemorrhage EDV/ESV values were excluded from that fitting residual.
 
-Sympathetic recruitment of unstressed venous volume now saturates at an effective 250 mL reserve. The low-tone recruitment gain, sympathetic chronotropic and resistance gains, systemic unstressed volume, and RV active/passive pressure-volume parameters were recalibrated together. RV active pressure uses max(0, RV volume - 25 mL); this reference volume is separate from the passive relation. These are phenomenological circuit parameters, not measured human reserves or recovered SimBioSys constants. The saturation does not depend on a named scenario or force a target cardiac output; all output still follows the circulation solver.
+All 30 extracted PowerPoint intervention checkpoints and all 11 older-table rows were then compared. These are internally reviewed calibration data, **not blinded validation**. The 1 L hemorrhage and severe LV-function observations are no longer described as withheld. Source documents, screenshots, extracted reference values, fitting scripts and full residual tables remain outside this public repository.
 
-The 2 L active-hemorrhage reference now gives CO 2.41 L/min, HR 186/min, MAP 48 mmHg, and SV 13 mL, versus legacy readouts 2.09, 187, 47, and 11. CVP is -3.63 versus -1.8 mmHg and LVEDP -4.41 versus -3 mmHg. Baseline and all 30 screenshot checkpoints were reevaluated. Descriptive mean absolute differences changed: CO 0.31 to 0.25 L/min, HR 8.53 to 7.62/min, MAP 4.44 to 3.84 mmHg, CVP 0.70 to 0.67 mmHg, LVEDP 1.71 to 1.74 mmHg, and Pms 1.54 to 1.71 mmHg. Not every measure improves. At 1.5 L active hemorrhage, MAP moves from 82 to 77 versus a reference of 82 mmHg.
+Fitting uses the current 500 mL/min hemorrhage default and settled outputs. The full PowerPoint comparison uses 166.7 mL/min from the older lab protocol; actual PowerPoint delivery rates are unknown. Pericardial delivery is assumed 200 mL/min. Final values average ten seconds after at least two minutes of settling, with a second window after another minute. CO, HR, MAP, Pra and LVEDP convergence are checked. These results do not validate exact transient trajectories. Older no-sympathetic rows are additionally compared with both branches clamped because their HR is constant; their true vagal setting is undocumented.
 
-This optimization explicitly used the severe hemorrhage and 25% LV active-autonomic observations; the latter is no longer a withheld fitting checkpoint. All reviewed data are internal calibration evidence, not a blinded validation set. Fitting used shorter delivery protocols followed by settling; final evaluation used the lab-rate protocols. Transient trajectories remain unvalidated. No ischemic injury or additional collapse mechanism was introduced.
+Across the 30 PowerPoint states, descriptive mean absolute differences changed as follows:
 
-## Display and next calibration target
+| Measure | Previous | Recalibrated |
+|---|---:|---:|
+| CO (L/min) | 0.251 | 0.259 |
+| HR (/min) | 7.62 | 7.57 |
+| MAP (mmHg) | 3.84 | 3.70 |
+| Pra/CVP (mmHg) | 0.67 | 0.54 |
+| LVEDP (mmHg) | 1.74 | 2.52 |
+| Pms (mmHg) | 1.71 | 1.24 |
+| EDV (mL) | 5.22 | 4.05 |
+| ESV (mL) | 2.92 | 2.47 |
 
-Pulse pressure is displayed in Vital Signs by default and included in CSV exports. It equals the completed-beat SBP minus DBP, in mmHg. The accepted next calibration target is HR above 100/min at 1 L hemorrhage with intact autonomics (approximately 100–120/min); this takes priority over the older table HR of 90. It has not yet been implemented in the current circulation calibration.
+Important remaining differences:
 
-## Ventricular property controls
+- Moderate hemorrhage is somewhat overcompensated in CO; severe pulse-pressure narrowing can be greater than the older table.
+- At about 400 mL effusion, CO and HR remain too high relative to the screenshots, and the fall in MAP is too small. The direction of CO/MAP decline and Pra rise is preserved.
+- Severe LV dysfunction raises filling pressure and chamber volumes, but the active-autonomic legacy LVEDP and MAP are not fully reproduced.
+- Correcting resting pressure worsens LVEDP residuals in some depleted-volume states. Negative pressure during marked depletion is not hidden.
+- Exercise, RV injury, dehydration-specific fluid redistribution, chronic remodeling and ischemic tissue injury remain unimplemented or unvalidated.
 
-The systolic-function selector includes 125% to explore increased active pressure generation. The UI exposes relative diastolic compliance from 1/3× to 2× baseline, mapped to stiffness = 1/compliance. The underlying exponential passive equation is unchanged; these are relative parameter settings, not fixed dV/dP multipliers at every volume. Active relaxation remains a separate control. These settings are exploratory and have not been fitted to exercise or chronic-hypertension cases.
+## Graphs and verification
 
-Mean Pra is shown by default in Cardiac Measures and exported as `pra`. It is an alias of the same completed-beat mean right atrial pressure reported as CVP, not the instantaneous RA waveform.
+Pms and RVR derive from beat-averaged systemic compartment pressures and positive resistances: Pms = (Ca × meanPa + Cv × meanPv)/(Ca + Cv), RVR = [Rv + Rs × Ca/(Ca + Cv)]/0.06. They are effective circuit quantities, not forced matches to contradictory legacy readings. Mean Pra and CVP are identical aliases. The Guyton cardiac curve passes through measured Pra/CO; its off-operating-point shape remains illustrative. The marker matches both curves at steady state; transient CO/VR differences are retained.
 
-Guyton axes use Pra ticks -5, 0, 5, 10, 15, 20 mmHg and flow ticks 0, 5, 10, 15, 20 L/min. PV volume ticks are 0, 50, 100, 150, 200, 250 mL. The Guyton marker uses displayed mean Pra and CO, with dashed axis guides and numerical annotation. It is not an equilibrium-intersection marker during transients.
+Axes remain fixed: pressure −10 to 180 mmHg, PV volume 0 to 250 mL with 50 mL ticks, Guyton Pra −5 to 20 mmHg with 5 mmHg ticks, and flow 0 to 20 L/min. The time tracing spans ten seconds.
+
+`npm test` runs 37 checks covering conservation, numerical convergence, baseline pressure, hemorrhage and replacement, tamponade and drainage, LV function/compliance, independent clamping, same-beat identities, waveform MAP, notch and atrial features, and Guyton consistency. Near-zero pressure convergence uses a 0.01 mmHg absolute tolerance in addition to the relative criterion. Passing these checks establishes software/model consistency, not clinical validity.

@@ -185,7 +185,7 @@ test('5 L requested hemorrhage reaches an explicit bounded model limit', () => {
   assert.deepEqual(model.snapshot(), snapshot, 'no evolution after an explicit model stop');
 });
 
-test('halving the integration step preserves averaged hemorrhage response within 1 percent', () => {
+test('halving the integration step preserves response within 1 percent or 0.01 mmHg near zero', () => {
   function run(dt) {
     const model = settled();
     model.startIntervention({ type: 'hemorrhage', volumeMl: 1000, rateMlMin: 1000 });
@@ -202,7 +202,9 @@ test('halving the integration step preserves averaged hemorrhage response within
   const normal = run(0.002);
   const refined = run(0.001);
   for (const field of Object.keys(normal)) {
-    close(normal[field], refined[field], Math.max(0.001, Math.abs(refined[field]) * 0.01),
+    // Relative pressure error is ill-conditioned as Pra crosses zero. The
+    // 0.01 mmHg absolute floor remains ten times finer than the UI readout.
+    close(normal[field], refined[field], Math.max(field==='co'?0.001:0.01, Math.abs(refined[field]) * 0.01),
       `${field} numerical step convergence`);
   }
 });
@@ -342,11 +344,56 @@ test('PV ejection width agrees with stroke volume during an abrupt change in LV 
  const m=new PhysiologyModel();m.setLVFunction(.25);
  for(let i=0;i<500;i++){const s=m.advance(.1);close(s.edv-s.esv,s.sv,.1,'same-ejection SV');}
 });
-test('baseline and withheld moderate hemorrhage remain within teaching calibration ranges',()=>{
+test('baseline and clamped moderate hemorrhage remain within teaching calibration ranges',()=>{
  const m=new PhysiologyModel();m.setReflex(false);m.setVagalFeedback(false);const b=m.snapshot();
  assert.ok(b.co>4.8&&b.co<5.8);assert.ok(b.map>80&&b.map<95);assert.ok(b.pms>6&&b.pms<9);
  m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:1000});const s=m.advance(240);
  assert.ok(s.co>3.2&&s.co<4.4);assert.ok(s.map>50&&s.map<70);assert.ok(s.cvp<b.cvp);
+});
+
+test('resting filling pressures match the teaching baseline without a plotted pressure clamp',()=>{
+ const m=new PhysiologyModel();let minLV=Infinity;
+ for(let i=0;i<5000;i++){m.step(.002);minLV=Math.min(minLV,m.pressures()[0]);}
+ const s=m.snapshot();
+ close(s.pra,5,.5,'baseline mean Pra');assert.equal(s.pra,s.cvp);
+ assert.ok(minLV>=0&&minLV<2,`baseline solver LV minimum ${minLV}`);
+ assert.ok(s.lvedp>=5&&s.lvedp<=9);assert.ok(s.edv>=110&&s.edv<=125);
+ close(s.lvPressure,m.pressures()[0],1e-12,'display uses solver pressure');
+});
+
+test('active hemorrhage preserves early compensation then produces severe low output',()=>{
+ const m=new PhysiologyModel(),baseline=m.snapshot();
+ const points=[];
+ for(const volumeMl of [1000,1000]){
+  m.startIntervention({type:'hemorrhage',volumeMl,rateMlMin:500});m.advance(320);
+  points.push(m.snapshot());
+ }
+ const [moderate,severe]=points;
+ assert.ok(moderate.hr>=100&&moderate.hr<=120,`1 L HR ${moderate.hr}`);
+ assert.ok(moderate.pulsePressure<baseline.pulsePressure);
+ assert.ok(severe.co>=1.7&&severe.co<=2.9,`2 L CO ${severe.co}`);
+ assert.ok(severe.map>=35&&severe.map<=60,`2 L MAP ${severe.map}`);
+ assert.ok(severe.pulsePressure<moderate.pulsePressure);
+ for(const s of points){assert.ok(s.pms>s.pra);close(s.co,s.vr,.04,'settled CO and VR');}
+});
+
+test('LV impairment retains the high-volume diastolic response after baseline recalibration',()=>{
+ const m=new PhysiologyModel(),baseline=m.snapshot();m.setLVFunction(.25);m.advance(200);
+ const s=m.snapshot();
+ assert.ok(s.edv>baseline.edv&&s.edv<205);
+ assert.ok(s.lvedp>25&&s.lvedp<45,`impaired LVEDP ${s.lvedp}`);
+ assert.ok(s.co>4&&s.co<5.5,`impaired CO ${s.co}`);
+ close(s.edv-s.esv,s.sv,.1,'same-beat LV volumes');
+});
+
+test('tamponade lowers output and MAP and sympathetic clamping freezes both response states',()=>{
+ const m=new PhysiologyModel(),baseline=m.snapshot();
+ m.startIntervention({type:'pericardialInfusion',volumeMl:399,rateMlMin:200});m.advance(320);
+ const s=m.snapshot();assert.ok(s.co<baseline.co);assert.ok(s.map<baseline.map);
+ assert.ok(s.pra>baseline.pra);assert.ok(s.lvedp>baseline.lvedp);
+ m.setSympatheticFeedback(false);const cardiac=m.tone,vascular=m.vascularTone;
+ m.startIntervention({type:'pericardialDrain',volumeMl:399,rateMlMin:200});m.advance(200);
+ assert.equal(m.tone,cardiac);assert.equal(m.vascularTone,vascular);
 });
 
 
@@ -391,7 +438,9 @@ test('severe hemorrhage exhausts compensation without breaking beat identities a
   if(i===1)moderate=m.snapshot();
  }
  const severe=average(m);const s=m.snapshot();checkFinite(s);assert.equal(s.limit,null);
- assert.ok(moderate.co>4.5&&moderate.co<5.5,'moderate hemorrhage remains compensated');
+ // The instructor's >100/min Class II target permits a small compensated
+ // output overshoot; bound it relative to this calibration's own baseline.
+ assert.ok(moderate.co>4.5&&moderate.co<base.co*1.1,'moderate hemorrhage remains compensated');
  assert.ok(severe.co>1.8&&severe.co<2.8,'severe hemorrhage has markedly reduced output');
  assert.ok(severe.hr>170&&severe.hr<198,'tachycardia without hitting the HR ceiling');
  assert.ok(severe.map>40&&severe.map<58,'pressure no longer excessively preserved');
