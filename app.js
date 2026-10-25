@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=pra-12';
+import { PhysiologyModel } from './model.js?v=axes-13';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=pra-12';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=axes-13';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -78,11 +78,18 @@ function chart(id,xMin,xMax,yMin,yMax,xLabel,yLabel){
  for(const y of yTicks){ctx.strokeStyle=y===0?'#aebdc4':colors.grid;ctx.beginPath();ctx.moveTo(left,Y(y));ctx.lineTo(right,Y(y));ctx.stroke();ctx.textAlign='right';ctx.fillText(Number(y.toFixed(1)),left-8,Y(y)+3);}
  ctx.textAlign='center';
  if(timePlot){ctx.strokeStyle=colors.text;for(let second=0;second<=10;second++){ctx.beginPath();ctx.moveTo(X(second),bottom);ctx.lineTo(X(second),bottom+(second%5===0?6:3));ctx.stroke();if(second%5===0)ctx.fillText(second,X(second),bottom+16);}}
- else for(let i=0;i<=4;i++){const x=xMin+(xMax-xMin)*i/4;ctx.fillText(Number(x.toFixed(1)),X(x),bottom+16);}
+ else {const ticks=id==='pv'?[0,50,100,150,200,250]:[-5,0,5,10,15,20];for(const x of ticks){ctx.strokeStyle=colors.text;ctx.beginPath();ctx.moveTo(X(x),bottom);ctx.lineTo(X(x),bottom+5);ctx.stroke();ctx.fillText(x,X(x),bottom+16);}}
  ctx.textAlign='left';ctx.fillText(yLabel,3,10);ctx.textAlign='center';ctx.fillText(xLabel,(left+right)/2,h-3);
  const line=(points,color,dashed=false,width=1.8)=>{ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle=color;ctx.lineWidth=dashed?1.2:width;ctx.globalAlpha=dashed?.4:1;ctx.setLineDash(dashed?[4,4]:[]);ctx.beginPath();let active=false;for(const p of points){if(!Number.isFinite(p.x)||!Number.isFinite(p.y)){active=false;continue;}if(!active){ctx.moveTo(X(p.x),Y(p.y));active=true;}else ctx.lineTo(X(p.x),Y(p.y));}ctx.stroke();ctx.restore();};
  const dot=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))return;ctx.fillStyle='#193944';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(x),Y(y),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();};
- return {line,dot};
+ const operatingPoint=(x,y)=>{
+  if(!Number.isFinite(x)||!Number.isFinite(y))return;
+  ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();ctx.strokeStyle='#617b86';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(X(x),bottom);ctx.lineTo(X(x),Y(y));ctx.lineTo(left,Y(y));ctx.stroke();ctx.restore();
+  if(x>=xMin&&x<=xMax&&y>=yMin&&y<=yMax)dot(x,y);
+  ctx.fillStyle=colors.text;ctx.textAlign='right';ctx.fillText(`Pra ${fmt(x,1)} mmHg · CO ${fmt(y,2)} L/min`,right,top+12);
+ };
+ return {line,dot,operatingPoint};
 }
 function draw(){
  const overlay=$('overlay').checked;const end=Math.max(10,state.time),start=end-10;
@@ -105,7 +112,7 @@ function draw(){
  pv.line(pvPoints(history,state.beatId,transmural),colors.arterial);
  pv.dot(state.lvVolume,transmural?state.lvTransmuralPressure:state.lvPressure);
  const g=state.guyton;
- if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Venous Return (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);if(g.intersection)plot.dot(g.intersection.x,g.intersection.y);}
+ if(g){const plot=chart('guyton',-5,GUYTON_PRA_MAX,0,20,'Right atrial pressure (mmHg)','Venous Return (L/min)');if(overlay&&baselineState.guyton){plot.line(baselineState.guyton.cardiac,colors.arterial,true);plot.line(baselineState.guyton.venous,colors.venous,true);}plot.line(g.cardiac,colors.arterial);plot.line(g.venous,colors.venous);plot.operatingPoint(state.pra,state.co);}
 
 }
 function frame(now){
