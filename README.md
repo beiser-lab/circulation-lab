@@ -39,7 +39,7 @@ This repository contains only the independent web application and its tests. Ori
 
 ### Display conventions
 
-Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve passes through current measured Pra and CO; its remaining shape is illustrative. The marker is its intersection with the vascular curve and agrees with measured flow at steady state.
+Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve passes through current measured Pra and CO; its remaining shape is illustrative. The marker shows measured mean Pra and CO, with axis guides. At steady state it also lies at the curve intersection; during transients it can be off the venous-return curve.
 
 Pressure plots use −10–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–20 mmHg with flow 0–20 L/min. Curves outside these limits are clipped. Intracavitary LV pressure is shared by both plots; the optional transmural selector appears in pericardial experiments. PV references share the solver's pressure equations.
 
@@ -56,3 +56,5 @@ The simulator links to public GitHub issue forms for [bug reports](https://githu
 To receive notifications, open the repository's **Watch → Custom → Issues** setting (or **All Activity**). Email delivery follows your GitHub notification settings.
 
 [Insights → Traffic](https://github.com/beiser-lab/circulation-lab/graphs/traffic) shows repository visitors over the past 14 days for users with push access. These are **not visits to the published simulator**. No external analytics or simulator visitor counter is installed.
+
+Guyton axes use Pra ticks -5, 0, 5, 10, 15, 20 mmHg and flow ticks 0, 5, 10, 15, 20 L/min. PV volume ticks are 0, 50, 100, 150, 200, 250 mL. The Guyton marker uses displayed mean Pra and CO, with dashed axis guides and numerical annotation. It is not an equilibrium-intersection marker during transients.
