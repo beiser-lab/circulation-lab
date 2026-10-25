@@ -383,3 +383,31 @@ test('LA c wave is confined to rising isovolumic LV contraction and enters the r
  m.phase=.35;assert.equal(m.leftAtrialPressure(160,30,90,-4).cWave,0,'no second c wave during relaxation');
  m.phase=.88;assert.ok(m.leftAtrialPressure(160,5,80,-4).aWave>0,'atrial systole remains separate');
 });
+
+test('severe hemorrhage exhausts compensation without breaking beat identities and recovers after volume replacement',()=>{
+ const m=new PhysiologyModel(),base=m.snapshot();let moderate;
+ for(let i=0;i<4;i++){
+  m.startIntervention({type:'hemorrhage',volumeMl:500,rateMlMin:10000/60});m.advance(380);
+  if(i===1)moderate=m.snapshot();
+ }
+ const severe=average(m);const s=m.snapshot();checkFinite(s);assert.equal(s.limit,null);
+ assert.ok(moderate.co>4.5&&moderate.co<5.5,'moderate hemorrhage remains compensated');
+ assert.ok(severe.co>1.8&&severe.co<2.8,'severe hemorrhage has markedly reduced output');
+ assert.ok(severe.hr>170&&severe.hr<198,'tachycardia without hitting the HR ceiling');
+ assert.ok(severe.map>40&&severe.map<58,'pressure no longer excessively preserved');
+ assert.ok(severe.cvp<moderate.cvp);assert.ok(s.pms>s.cvp);assert.ok(s.rvr/base.rvr<1.25,'modest RVR change');
+ close(s.co,s.sv*s.hr/1000,1e-10,'severe beat identity');close(s.edv-s.esv,s.sv,.1,'severe PV width');
+ close(s.bloodVolume,base.bloodVolume-2000,.001,'withdrawal mass balance');
+ m.startIntervention({type:'bloodInfusion',volumeMl:2000,rateMlMin:1000});m.advance(420);
+ const recovered=average(m);assert.equal(m.limit,null);close(m.bloodVolume,base.bloodVolume,.001,'replacement mass balance');
+ close(recovered.co,base.co,.15,'recovered CO');close(recovered.hr,base.hr,2,'recovered HR');
+});
+
+test('severe hemorrhage remains stable when the integration timestep is halved',()=>{
+ function run(dt){const m=new PhysiologyModel();m.startIntervention({type:'hemorrhage',volumeMl:2000,rateMlMin:2000});
+  for(let i=0;i<280/dt;i++)m.step(dt);
+  const sums={co:0,map:0,hr:0,cvp:0};for(let i=0;i<10/dt;i++){m.step(dt);const s=m.snapshot();for(const k in sums)sums[k]+=s[k]*dt/10;}
+  assert.equal(m.limit,null);return sums;
+ }
+ const normal=run(.002),fine=run(.001);for(const k in normal)close(normal[k],fine[k],Math.max(.03,Math.abs(fine[k])*.02),`severe ${k} convergence`);
+});

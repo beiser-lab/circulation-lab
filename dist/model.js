@@ -7,7 +7,7 @@ const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
 export const DEFAULT_PARAMETERS=Object.freeze({
   "systemicCompliance": 113,
-  "systemicUnstressed": 2174.6136,
+  "systemicUnstressed": 2151.4386,
   "systemicResistance": 0.9233,
   "venousResistance": 0.0308,
   "lvElastance": 4.0293,
@@ -15,14 +15,16 @@ export const DEFAULT_PARAMETERS=Object.freeze({
   "lvAlpha": 2.6337,
   "lvBeta": 0.02,
   "lvUnstressed": 40,
-  "rvElastance": 0.5,
-  "rvAlpha": 2.25,
+  "rvElastance": 0.6522316,
+  "rvAlpha": 2.03875,
   "rvBeta": 0.0165,
-  "rvUnstressed": 60,
-  "venousRecruitment": 812.5,
-  "sympatheticHR": 108.4375,
+  "rvUnstressed": 53.6625,
+  "venousRecruitment": 1100,
+  "venousRecruitmentMax": 250,
+  "rvActiveV0": 25,
+  "sympatheticHR": 80.272,
   "vagalHR": 40,
-  "sympatheticGain": 0.6758,
+  "sympatheticGain": 0.3491,
   "cardiopulmonaryGain": 0.04,
   "sympatheticLag": 20,
   "vagalLag": 2,
@@ -80,7 +82,11 @@ export class PhysiologyModel {
     return 0;
   }
   setPericardium(intact){this.pericardiumIntact=Boolean(intact);}
-  parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-c.venousRecruitment*this.tone:v),rs:c.systemicResistance*(1+c.sympatheticGain*this.tone),rv:c.venousResistance*(1+.12*this.tone),cp:1+0.55*this.tone};}
+  // Finite effective venous reserve: sympathetic recruitment saturates while
+  // chronotropy, inotropy and resistance retain their independent responses.
+  // The reserve and RV pressure-volume parameters are classroom calibration
+  // parameters, not measured total human recruitable volume.
+  parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-Math.min(c.venousRecruitment*this.tone,c.venousRecruitmentMax):v),rs:c.systemicResistance*(1+c.sympatheticGain*this.tone),rv:c.venousResistance*(1+.12*this.tone),cp:1+0.55*this.tone};}
   aorticClosurePressure(){
     if(this.aorticClosureTime===null)return 0;
     const age=this.time-this.aorticClosureTime;
@@ -128,7 +134,7 @@ export class PhysiologyModel {
     const c=this.config;
     const peri=-4+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
-    const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-p.v0[1]);
+    const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-c.rvActiveV0);
     const lvPressure=peri+this.lvPressureVolume(v[0],this.lvActivation());
     const aorticPressure=(v[2]-p.v0[2])/1.5+this.aorticClosurePressure();
     const la=this.leftAtrialPressure(v[7],lvPressure,aorticPressure,peri);

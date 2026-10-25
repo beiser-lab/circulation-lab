@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=wiggers-5';
+import { PhysiologyModel } from './model.js?v=calibration-7';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=wiggers-5';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=calibration-7';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();

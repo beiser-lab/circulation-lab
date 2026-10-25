@@ -18,13 +18,13 @@ For the two systemic compliant reservoirs, Pms = (Ca*meanPa + Cv*meanPv)/(Ca+Cv)
 
 ## Calibration scope
 
-Baseline, clamped hemorrhage, LV function at 50%, and approximately 200/400 mL effusions informed mechanical fitting. Active hemorrhage and the 400 mL effusion informed autonomic fitting. Intermediate 1 L hemorrhage, approximately 300 mL effusion, and 25% LV function were withheld from parameter fitting, though reviewed during validation. This is internal validation, not an independent clinical cohort. Source decks and extracted answer tables remain outside this public repository.
+Baseline, clamped hemorrhage, LV function at 50%, and approximately 200/400 mL effusions informed mechanical fitting. Active hemorrhage and the 400 mL effusion informed autonomic fitting. Intermediate 1 L hemorrhage, approximately 300 mL effusion, and 25% LV function were initially withheld from parameter fitting, though reviewed during validation. The later optimization below used the active-autonomic 25% LV checkpoint. This is internal validation, not an independent clinical cohort. Source decks and extracted answer tables remain outside this public repository.
 
-After the atrial/relaxation update, baseline is approximately CO 5.32 L/min, HR 70/min, waveform MAP 89 mmHg, CVP 3.9 mmHg, LVEDP 6.1 mmHg, Pms 7.7 mmHg, and SV 76 mL. Validation compares averages beginning at 120 seconds after an intervention with later averages; this demonstrates convergence for those tested protocols, not a universal settling guarantee. Simulation playback is 1:1.
+After the severe-hemorrhage optimization, baseline is approximately CO 5.43 L/min, HR 70/min, waveform MAP 90 mmHg, CVP 3.9 mmHg, LVEDP 6.7 mmHg, Pms 7.8 mmHg, and SV 78 mL. Validation compares averages beginning at 120 seconds after an intervention with later averages; this demonstrates convergence for those tested protocols, not a universal settling guarantee. Simulation playback is 1:1.
 
 ## Remaining limits
 
-- Severe hemorrhage (especially 2 L with active autonomics) retains too much output compared with the legacy observations. Shock/decompensation mechanisms have not been calibrated.
+- At 2 L hemorrhage with active autonomics, CO remains somewhat high (2.41 versus 2.09 L/min); CVP and LVEDP are too negative. Tissue oxygen delivery, ischemic decompensation, and shock progression are not represented.
 - Severe LV impairment produces too little filling-pressure elevation and does not reproduce the legacy preservation/overshoot of output under active autonomics. A functional fraction is not a percentage of infarcted myocardium.
 - Early tamponade reduces output somewhat too early; its HR response is larger than some legacy observations. Pericardial dynamics and respiratory effects remain simplified.
 - Pms and RVR are physically coherent effective circuit quantities; they are deliberately not fitted to contradictory legacy edge values.
@@ -43,3 +43,11 @@ LV relaxation speed changes the falling limb of activation while preserving its 
 Autonomic gauges display 1 + the internal signed branch deviation, with baseline 1.00. They are arbitrary relative model indices, not percentages of maximal neural activity or measured clinical quantities. Clamping holds the underlying branch state. The gauge values do not feed back into the solver.
 
 Exercise remains a proposed extension, not an implemented intervention. A graded dynamic-exercise intensity should combine demand-related reductions in resistance, venous recruitment/muscle-pump effects, and autonomic drive affecting HR, contractility, and relaxation. Active/clamped branches must retain their meaning. Benchmark steady exercise and recovery before combining exercise with volume loss.
+
+## Severe hemorrhage optimization
+
+Sympathetic recruitment of unstressed venous volume now saturates at an effective 250 mL reserve. The low-tone recruitment gain, sympathetic chronotropic and resistance gains, systemic unstressed volume, and RV active/passive pressure-volume parameters were recalibrated together. RV active pressure uses max(0, RV volume - 25 mL); this reference volume is separate from the passive relation. These are phenomenological circuit parameters, not measured human reserves or recovered SimBioSys constants. The saturation does not depend on a named scenario or force a target cardiac output; all output still follows the circulation solver.
+
+The 2 L active-hemorrhage reference now gives CO 2.41 L/min, HR 186/min, MAP 48 mmHg, and SV 13 mL, versus legacy readouts 2.09, 187, 47, and 11. CVP is -3.63 versus -1.8 mmHg and LVEDP -4.41 versus -3 mmHg. Baseline and all 30 screenshot checkpoints were reevaluated. Descriptive mean absolute differences changed: CO 0.31 to 0.25 L/min, HR 8.53 to 7.62/min, MAP 4.44 to 3.84 mmHg, CVP 0.70 to 0.67 mmHg, LVEDP 1.71 to 1.74 mmHg, and Pms 1.54 to 1.71 mmHg. Not every measure improves. At 1.5 L active hemorrhage, MAP moves from 82 to 77 versus a reference of 82 mmHg.
+
+This optimization explicitly used the severe hemorrhage and 25% LV active-autonomic observations; the latter is no longer a withheld fitting checkpoint. All reviewed data are internal calibration evidence, not a blinded validation set. Fitting used shorter delivery protocols followed by settling; final evaluation used the lab-rate protocols. Transient trajectories remain unvalidated. No ischemic injury or additional collapse mechanism was introduced.
