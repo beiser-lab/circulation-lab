@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=graph-cleanup-18';
+import { PhysiologyModel } from './model.js?v=baseline-five-19';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=graph-cleanup-18';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=baseline-five-19';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
