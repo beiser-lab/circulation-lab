@@ -511,3 +511,30 @@ test('Guyton operating point matches displayed output after hemorrhage and other
   }
  }
 });
+
+test('end-systolic reference contains the measured valve-closure point at reduced LV function',()=>{
+ for(const active of [false,true])for(const fraction of [1,.5,.25,.1]){
+  const m=new PhysiologyModel();m.setSympatheticFeedback(active);m.setLVFunction(fraction);
+  for(let i=0;i<90000;i++)m.step(.002);
+  const s=m.snapshot();assert.ok(s.endSystole);
+  close(s.esv,s.endSystole.volume,1e-9,'reported ESV is closure volume');
+  for(const transmural of [false,true]){
+   const ref=m.endSystolicReference(transmural);
+   const sample=ref.curve.find(p=>p.x===ref.point.x);assert.ok(sample);
+   close(sample.y,ref.point.y,1e-10,'curve and actual closure pressure coincide');
+   close(ref.point.y,s.lvesp-(transmural?s.endSystole.externalPressure:0),1e-10,'external pressure added once');
+  }
+  const before=m.endSystolicReference();m.setLVCompliance(.5);m.setLVFunction(.75);
+  assert.deepEqual(m.endSystolicReference(),before,'completed beat reference is not retroactively changed');
+ }
+});
+
+test('end-systolic reference uses closure external pressure during pericardial intervention',()=>{
+ const m=new PhysiologyModel();m.effusionVolume=400;m.setLVFunction(.25);
+ for(let i=0;i<90000;i++)m.step(.002);
+ const event=m.snapshot().endSystole;assert.ok(event);
+ const intra=m.endSystolicReference(),trans=m.endSystolicReference(true);
+ close(intra.point.y-trans.point.y,event.externalPressure,1e-10,'event external pressure');
+ close(intra.curve.find(p=>p.x===event.volume).y,event.pressure,1e-10,'closure pressure on curve');
+ m.metrics.endSystole=null;assert.equal(m.endSystolicReference(),null,'no stale reference for non-ejecting beat');
+});

@@ -2,7 +2,7 @@
  * Flow follows compartment pressure gradients; all traces use the same state.
  * This is not SimBioSys's engine and is not calibrated for patient prediction.
  */
-import {activeChamberPressure} from './cardiac-mechanics.js?v=legacy-active-15';
+import {activeChamberPressure} from './cardiac-mechanics.js?v=end-systolic-16';
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
@@ -105,8 +105,8 @@ export class PhysiologyModel {
     if(age<0||age>=duration)return 0;
     return -this.notchAmplitude*Math.exp(-12*age)*Math.sin(2*Math.PI*age/duration)*(1-age/duration)**2;
   }
-  lvPressureVolume(volume,activation=0){
-    const c=this.config,z=c.lvBeta*this.lvStiffness*(volume-c.lvUnstressed);
+  lvPressureVolume(volume,activation=0,properties=this.lvPressureParameters()){
+    const c=properties,z=c.lvBeta*c.stiffness*(volume-c.lvUnstressed);
     // Generalized exponential passive law with fitted pressure intercept.
     // lvUnstressed is retained as an internal parameter name but now denotes
     // a fixed reference volume (40 mL), not the zero-pressure volume. The
@@ -114,17 +114,29 @@ export class PhysiologyModel {
     // Preserve a smooth tangent extension below the reference volume.
     // Avoid the legacy discontinuous low-volume branch and error-return pressure.
     const passive=c.lvAlpha*(z>0?Math.expm1(Math.min(z,8)):z);
-    return c.lvPassivePressureOffset+passive+this.lvActivePressure(volume,activation);
+    return c.lvPassivePressureOffset+passive+activeChamberPressure(volume,activation,c);
   }
 
-  lvActivePressure(volume,activation){
+  lvPressureParameters(){
     const c=this.config,factor=this.lvFunction*this.parameters().cp;
-    // Function and contractility scale both coefficients, not the activation
-    // input: reducing function must not independently move Vd at fixed phase.
-    return activeChamberPressure(volume,activation,{
+    return {lvBeta:c.lvBeta,stiffness:this.lvStiffness,lvUnstressed:c.lvUnstressed,
+      lvAlpha:c.lvAlpha,lvPassivePressureOffset:c.lvPassivePressureOffset,
       a1:factor*c.lvElastance,a2:factor*c.lvCurvature,
-      vdMax:c.lvActiveVdMax,vdMin:c.lvActiveVdMin
-    });
+      vdMax:c.lvActiveVdMax,vdMin:c.lvActiveVdMin};
+  }
+  lvActivePressure(volume,activation){
+    return activeChamberPressure(volume,activation,this.lvPressureParameters());
+  }
+  endSystolicReference(transmural=false){
+    const event=this.metrics?.endSystole;
+    if(!event)return null; // No end-ejection reference for a non-ejecting beat.
+    const offset=transmural?0:event.externalPressure;
+    // An isochrone at actual valve closure, not a load-independent ESPVR fit.
+    // Freeze the completed beat's activation and properties. Include its exact
+    // volume so canvas interpolation also passes through the measured point.
+    const volumes=[...new Set([...Array.from({length:251},(_,i)=>i),event.volume])].sort((a,b)=>a-b);
+    return {curve:volumes.map(x=>({x,y:offset+this.lvPressureVolume(x,event.activation,event.properties)})),
+      point:{x:event.volume,y:event.pressure-(transmural?event.externalPressure:0)}};
   }
 
   ventricularReferenceCurves(){
@@ -194,6 +206,8 @@ export class PhysiologyModel {
     if(this.aorticValveOpen&&p[0]<=p[2]){
       this.aorticValveOpen=false;this.aorticClosedThisBeat=true;
       this.aorticClosureTime=this.time;
+      this.beat.endSystole={volume:this.v[0],pressure:p[0],externalPressure:p[8],
+        activation:this.lvActivation(),properties:this.lvPressureParameters()};
       this.notchAmplitude=clamp(this.beat.aortic/1.5*.3,0,14);
     }
     if(!this.aorticClosedThisBeat&&p[0]>p[2])this.aorticValveOpen=true;
@@ -226,7 +240,7 @@ export class PhysiologyModel {
       this.vagalDrive+=(target-this.vagalDrive)*dt/this.config.vagalLag;
     }
     this.phase+=dt*this.hr/60;this.time+=dt;
-    if(this.phase>=1){this.phase%=1;this.beatId++;this.aorticClosedThisBeat=false;this.metrics={beatHR:60/b.duration,vr:b.venous/b.duration*.06,meanSystemicVenousPressure:b.systemicVenous/b.duration,meanPericardialPressure:b.peri/b.duration,sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv};this.beat=this.newBeat();}
+    if(this.phase>=1){this.phase%=1;this.beatId++;this.aorticClosedThisBeat=false;this.metrics={beatHR:60/b.duration,vr:b.venous/b.duration*.06,meanSystemicVenousPressure:b.systemicVenous/b.duration,meanPericardialPressure:b.peri/b.duration,sbp:b.max,dbp:b.min,map:b.map/b.duration,co:b.aortic/b.duration*.06,cvp:b.rap/b.duration,lvedp:b.lvedp,lvedpTransmural:b.lvedpTransmural,sv:b.aortic,edv:b.edv,esv:b.esv,lvesp:b.endSystole?.pressure??null,endSystole:b.endSystole??null};this.beat=this.newBeat();}
     if(this.effusionVolume>1500||p.some(x=>!Number.isFinite(x))||p.slice(2,8).some(x=>x < -20)||this.v.some(x=>!Number.isFinite(x)||x<0)){this.limit='Outside supported model range. Reset to continue.';this.intervention=null;}
   }
   snapshot(){
