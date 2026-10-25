@@ -6,29 +6,32 @@ const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
 export const DEFAULT_PARAMETERS=Object.freeze({
-  "systemicCompliance": 113,
-  "systemicUnstressed": 2151.4386,
-  "systemicResistance": 0.9233,
-  "venousResistance": 0.0308,
+  "pericardialBaseline": -4,
+  "lvPassivePressureOffset": 3.7504,
+  "cardiopulmonaryMaxError": 4.5,
+  "systemicCompliance": 126.36,
+  "systemicUnstressed": 2072.3986,
+  "systemicResistance": 0.8941,
+  "venousResistance": 0.01584,
   "lvElastance": 4.0293,
   "lvCurvature": -0.013,
-  "lvAlpha": 2.6337,
-  "lvBeta": 0.02,
+  "lvAlpha": 1.588,
+  "lvBeta": 0.021864,
   "lvUnstressed": 40,
-  "rvElastance": 0.6522316,
+  "rvElastance": 0.5802316,
   "rvAlpha": 2.03875,
   "rvBeta": 0.0165,
   "rvUnstressed": 53.6625,
   "venousRecruitment": 1100,
-  "venousRecruitmentMax": 250,
+  "venousRecruitmentMax": 228.8,
   "rvActiveV0": 25,
-  "sympatheticHR": 80.272,
-  "vagalHR": 40,
-  "sympatheticGain": 0.3491,
-  "cardiopulmonaryGain": 0.04,
+  "sympatheticHR": 82.072,
+  "vagalHR": 28,
+  "sympatheticGain": 0.4731,
+  "cardiopulmonaryGain": 0.08704,
   "sympatheticLag": 20,
   "vagalLag": 2,
-  "pericardialCapacity": 633.1471,
+  "pericardialCapacity": 700,
   "pericardialScale": 1,
   "pericardialCompliance": 35
 });
@@ -37,7 +40,7 @@ export class PhysiologyModel {
   reset(){
     this.v=[120,120,842,3050,175,410,80,110];
     this.lvFunction=1;this.lvStiffness=1;this.lvRelaxation=1;this.pericardiumIntact=true;
-    this.time=0;this.phase=0;this.tone=0;this.vagalDrive=0;this.vagalEnabled=true;this.reflexEnabled=true;this.beatId=0;this.curveCache=null;
+    this.time=0;this.phase=0;this.tone=0;this.vascularTone=0;this.vagalDrive=0;this.vagalEnabled=true;this.reflexEnabled=true;this.beatId=0;this.curveCache=null;
     this.effusionVolume=1;this.removedBlood=0;this.intervention=null;this.limit=null;
     this.metrics={sbp:120,dbp:80,map:93,co:5,cvp:4,lvedp:8};
     this.aorticValveOpen=false;this.aorticClosedThisBeat=false;this.aorticClosureTime=null;this.notchAmplitude=0;
@@ -89,7 +92,7 @@ export class PhysiologyModel {
   // chronotropy, inotropy and resistance retain their independent responses.
   // The reserve and RV pressure-volume parameters are classroom calibration
   // parameters, not measured total human recruitable volume.
-  parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-Math.min(c.venousRecruitment*this.tone,c.venousRecruitmentMax):v),rs:c.systemicResistance*(1+c.sympatheticGain*this.tone),rv:c.venousResistance*(1+.12*this.tone),cp:1+0.55*this.tone};}
+  parameters(){const c=this.config;return {v0:BASE_V0.map((v,i)=>i===3?c.systemicUnstressed-Math.min(c.venousRecruitment*this.tone,c.venousRecruitmentMax):v),rs:c.systemicResistance*(1+c.sympatheticGain*this.vascularTone),rv:c.venousResistance*(1+.12*this.vascularTone),cp:1+0.55*this.tone};}
   aorticClosurePressure(){
     if(this.aorticClosureTime===null)return 0;
     const age=this.time-this.aorticClosureTime;
@@ -101,12 +104,16 @@ export class PhysiologyModel {
   }
   lvPressureVolume(volume,activation=0){
     const c=this.config,z=c.lvBeta*this.lvStiffness*(volume-c.lvUnstressed);
-    // Exponential passive relation with a smooth tangent extension below V0.
+    // Generalized exponential passive law with fitted pressure intercept.
+    // lvUnstressed is retained as an internal parameter name but now denotes
+    // a fixed reference volume (40 mL), not the zero-pressure volume. The
+    // intercept enters the circulation solver and reference curves alike.
+    // Preserve a smooth tangent extension below the reference volume.
     // Avoid the legacy discontinuous low-volume branch and error-return pressure.
     const passive=c.lvAlpha*(z>0?Math.expm1(Math.min(z,8)):z);
     const u=Math.max(0,volume-10);
     const active=this.lvFunction*this.parameters().cp*activation*u*Math.max(.2,c.lvElastance+c.lvCurvature*u);
-    return passive+active;
+    return c.lvPassivePressureOffset+passive+active;
   }
 
   ventricularReferenceCurves(){
@@ -135,7 +142,7 @@ export class PhysiologyModel {
   pressures(){
     const p=this.parameters(),v=this.v;
     const c=this.config;
-    const peri=-4+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
+    const peri=c.pericardialBaseline+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((v[0]+v[1]+v[6]+v[7]+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
     const systole=.38;const activation=this.phase<systole?Math.sin(Math.PI*this.phase/systole)**2:0;
     const lv=Math.max(0,v[0]-p.v0[0]),rv=Math.max(0,v[1]-c.rvActiveV0);
     const lvPressure=peri+this.lvPressureVolume(v[0],this.lvActivation());
@@ -191,8 +198,12 @@ export class PhysiologyModel {
     const pressureError=((this.baselineMap||93)-this.metrics.map)/48;
     if(this.reflexEnabled){
       const atrialError=(this.baselineAtrialDistendingPressure??0)-(this.metrics.cvp-this.metrics.meanPericardialPressure);
-      const target=clamp(pressureError+this.config.cardiopulmonaryGain*atrialError,-.35,1);
+      const target=clamp(pressureError+this.config.cardiopulmonaryGain*clamp(atrialError,-this.config.cardiopulmonaryMaxError,this.config.cardiopulmonaryMaxError),-.35,1);
       this.tone+=(target-this.tone)*dt/this.config.sympatheticLag;
+      // Regional reduced-model response: arterial pressure drives vascular
+      // resistance; cardiac drive also receives bounded filling-pressure input.
+      // Both states stop updating when sympathetic feedback is clamped.
+      this.vascularTone+=(clamp(pressureError,-.35,1)-this.vascularTone)*dt/this.config.sympatheticLag;
     }
     // Independent, provisional vagal chronotropic limb. Signed deviation from
     // baseline, NOT the original SimBioSys 0–1 tone. No vascular/ventricular effect.
@@ -242,7 +253,7 @@ export class PhysiologyModel {
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
       lvTransmuralPressure:p[0]-p[8],
       bloodVolume:this.bloodVolume,effusionVolume:this.effusionVolume,removedBlood:this.removedBlood,
-      reflexEnabled:this.reflexEnabled,sympatheticFeedbackEnabled:this.reflexEnabled,vagalFeedbackEnabled:this.vagalEnabled,vagalDrive:this.vagalDrive,vagalHeartRateEffect:-this.config.vagalHR*this.vagalDrive,tone:this.tone,autonomicTone:this.tone,intervention:this.intervention?{...this.intervention}:null,limit:this.limit,
+      reflexEnabled:this.reflexEnabled,sympatheticFeedbackEnabled:this.reflexEnabled,vagalFeedbackEnabled:this.vagalEnabled,vagalDrive:this.vagalDrive,vagalHeartRateEffect:-this.config.vagalHR*this.vagalDrive,tone:this.tone,vascularTone:this.vascularTone,autonomicTone:this.tone,intervention:this.intervention?{...this.intervention}:null,limit:this.limit,
       compartmentVolumes:[...this.v],guyton:this.curveCache};
   }
 }

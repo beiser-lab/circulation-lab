@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=axes-13';
+import { PhysiologyModel } from './model.js?v=calibration-14';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=axes-13';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=calibration-14';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
@@ -58,7 +58,7 @@ function makeBaseline(){
 }
 function capture(){
  history.push(plotSample(state));
- if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure','tone','vagalDrive','lvRelaxationRate'].map(k=>[k,state[k]])));lastExport=state.time;}
+ if(state.time-lastExport>=.1){exportRows.push(Object.fromEntries(['time',...specs.map(s=>s[0]),'lvVolume','lvPressure','arterialPressure','raPressure','laPressure','tone','vascularTone','vagalDrive','lvRelaxationRate'].map(k=>[k,state[k]])));lastExport=state.time;}
 }
 function reset(){running=false;model.reset();$('lv-function').value='1';$('lv-compliance').value='1';$('lv-relaxation').value='1';model.setSympatheticFeedback($('reflex').value==='active');model.setVagalFeedback($('vagal').value==='active');speed=1;$('speed').value='1';previousFrame=performance.now();state=model.snapshot();history=[];exportRows=[];lastExport=-1;deliverySpec=null;$('delivery').textContent='No active intervention';$('progress').value=0;capture();updateMetrics();draw();}
 function start(type,volumeMl,rateMlMin){
