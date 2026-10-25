@@ -59,3 +59,5 @@ Pulse pressure is displayed in Vital Signs by default and included in CSV export
 ## Ventricular property controls
 
 The systolic-function selector includes 125% to explore increased active pressure generation. The UI exposes relative diastolic compliance from 1/3× to 2× baseline, mapped to stiffness = 1/compliance. The underlying exponential passive equation is unchanged; these are relative parameter settings, not fixed dV/dP multipliers at every volume. Active relaxation remains a separate control. These settings are exploratory and have not been fitted to exercise or chronic-hypertension cases.
+
+Mean Pra is shown by default in Cardiac Measures and exported as `pra`. It is an alias of the same completed-beat mean right atrial pressure reported as CVP, not the instantaneous RA waveform.
