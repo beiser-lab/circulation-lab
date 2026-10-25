@@ -215,12 +215,20 @@ export class PhysiologyModel {
     const pms=(ca*m.map+cv*m.meanSystemicVenousPressure)/(ca+cv);
     const rvr=(q.rv+q.rs*ca/(ca+cv))/.06;
     const venous=[],cardiac=[];
-    const baselineCapacity=this.baselineCapacity??10;
-    const capacity=baselineCapacity*q.cp*Math.pow(this.lvFunction,.5)*(this.hr/70)*(c.systemicResistance/q.rs);
-    const externalPressure=this.metrics.meanPericardialPressure??p[8];
-    for(let x=-5;x<=25;x+=.25){
+    // Anchor the illustrative curve to the same completed-beat Pra and CO
+    // used by the numerical display. HR, inotropy and afterload affect this
+    // operating point through the solver, rather than a second output estimate.
+    // The off-operating-point curve remains illustrative, not a pressure sweep.
+    const externalPressure=m.meanPericardialPressure??p[8];
+    const zeroPressure=Math.min(externalPressure-2,m.cvp-.1);
+    const shape=x=>-Math.expm1(-Math.max(0,x-zeroPressure)/8);
+    const capacity=Math.max(0,m.co)/shape(m.cvp);
+    const xs=Array.from({length:121},(_,i)=>-5+i*.25);
+    if(m.cvp>=-5&&m.cvp<=25)xs.push(m.cvp);
+    xs.sort((a,b)=>a-b);
+    for(const x of [...new Set(xs)]){
       venous.push({x,y:(pms-x)/rvr});
-      cardiac.push({x,y:Math.max(0,capacity*(1-Math.exp(-Math.max(0,x-externalPressure+2)/8)))});
+      cardiac.push({x,y:capacity*shape(x)});
     }
     // Intersect the exact plotted line segments, not the pulsatile solver state.
     let intersection=null;
@@ -228,7 +236,7 @@ export class PhysiologyModel {
       const a=venous[i-1].y-cardiac[i-1].y,b=venous[i].y-cardiac[i].y;
       if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
     }
-    this.curveCache={venous,cardiac,intersection,label:'Illustrative cardiac function curve; vascular curve uses systemic compartment parameters. Dot is their intersection, not transient measured CO.'};
+    this.curveCache={venous,cardiac,intersection,label:'Cardiac curve is anchored to measured beat Pra and CO; its remaining shape is illustrative. Vascular curve uses systemic compartment parameters. Intersection agrees with output at steady state; transient CO and VR may differ.'};
     return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,pulsePressure:m.sbp-m.dbp,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvCompliance:1/this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
       contractility:this.config.lvElastance*q.cp*this.lvFunction,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],

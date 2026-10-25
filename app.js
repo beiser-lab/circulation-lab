@@ -1,6 +1,6 @@
-import { PhysiologyModel } from './model.js?v=compliance-10';
+import { PhysiologyModel } from './model.js?v=guyton-11';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=compliance-10';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=guyton-11';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
