@@ -72,6 +72,9 @@ export class PhysiologyModel {
   get hr(){return clamp(70+this.config.sympatheticHR*this.tone-this.config.vagalHR*this.vagalDrive,35,200);}
   setLVFunction(fraction){if(!Number.isFinite(fraction)||fraction<.1||fraction>1.5)throw new Error('LV function must be 0.1–1.5');this.lvFunction=fraction;}
   setLVStiffness(multiplier){if(!Number.isFinite(multiplier)||multiplier<.5||multiplier>3)throw new Error('LV stiffness must be 0.5–3');this.lvStiffness=multiplier;}
+  // Relative compliance control is reciprocal to the passive stiffness
+  // parameter; actual dV/dP remains volume-dependent on the exponential curve.
+  setLVCompliance(multiplier){if(!Number.isFinite(multiplier)||multiplier<1/3||multiplier>2)throw new Error('LV relative compliance must be 1/3–2');this.setLVStiffness(1/multiplier);}
   setLVRelaxation(multiplier){if(!Number.isFinite(multiplier)||multiplier<.5||multiplier>2)throw new Error('LV relaxation speed must be 0.5–2');this.lvRelaxation=multiplier;}
   lvActivation(){
     // Preserve baseline activation; sympathetic stimulation speeds the falling
@@ -226,7 +229,7 @@ export class PhysiologyModel {
       if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
     }
     this.curveCache={venous,cardiac,intersection,label:'Illustrative cardiac function curve; vascular curve uses systemic compartment parameters. Dot is their intersection, not transient measured CO.'};
-    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,pulsePressure:m.sbp-m.dbp,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
+    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,pulsePressure:m.sbp-m.dbp,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvCompliance:1/this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
       contractility:this.config.lvElastance*q.cp*this.lvFunction,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
       lvTransmuralPressure:p[0]-p[8],
