@@ -4,11 +4,19 @@ Browser-based cardiovascular physiology teaching prototype for hemorrhage and ca
 
 ## Status
 
-Experimental teaching model recalibrated against classroom observations and instructor-defined physiological constraints. Supports volume interventions, independent Active/Clamped autonomic controls with relative-state gauges, LV systolic function, compliance, and relaxation controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
+Experimental teaching model recalibrated against classroom observations and instructor-defined physiological constraints. Supports volume interventions, independent Active/Clamped autonomic controls with relative-state gauges, LV systolic function and compliance controls, pressure traces, PV loops, illustrative Guyton curves, and CSV export. Not for patient care.
 
 The LV active-pressure component uses the recovered SimBioSys quadratic law with an activation-dependent reference volume. Other physiology remains independently modeled. See [MODEL-ARCHITECTURE.md](MODEL-ARCHITECTURE.md) for the boundary for future organ components.
 
 See [CALIBRATION.md](CALIBRATION.md) for equations, measurement conventions, fitting/validation scope, and remaining differences. Severe hemorrhage and severe LV dysfunction remain approximate. Guided clinical cases and exercise are subsequent work.
+
+## What this model represents
+
+An independent, simplified closed-loop teaching prototype; calibrated against selected SimBioSys classroom observations, with remaining differences. Sympathetic and parasympathetic feedback can be clamped independently. Parasympathetic feedback affects heart rate only in this simplified model; its gain is an approximation. No patient predictions. Severe volume loss can exceed its useful physiological range.
+
+Waveforms and PV loops come from integrated model states. The aortic dicrotic notch uses a simplified damped recoil response triggered by valve closure; its shape is provisional. Dashed overlays on all three plots show a separately simulated healthy baseline; they do not change with the experiment.
+
+The Guyton cardiac curve passes through the model’s measured right atrial pressure and cardiac output; its remaining shape is illustrative. At steady state the intersection agrees with output; during transients CO and venous return can differ. Filling pressures are intravascular; ventricular distending pressure also depends on external pericardial pressure.
 
 ## Development
 
