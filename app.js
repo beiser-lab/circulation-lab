@@ -47,7 +47,8 @@ function updateMetrics(){
  if(deliverySpec){
  const actual = state.intervention?.deliveredMl ?? (deliverySpec.type==='hemorrhage' ? Math.max(0,state.removedBlood-deliverySpec.startRemoved) : deliverySpec.type==='bloodInfusion' ? Math.max(0,state.bloodVolume-deliverySpec.startBlood) : deliverySpec.type==='pericardialInfusion' ? Math.max(0,state.effusionVolume-deliverySpec.startEffusion) : Math.max(0,deliverySpec.startEffusion-state.effusionVolume));
  $('progress').value=Math.min(1,actual/deliverySpec.volumeMl);
- $('delivery').textContent=`${state.intervention?'In progress':'Stopped / complete'} · ${fmt(actual,0)} / ${fmt(deliverySpec.volumeMl,0)} mL delivered`;
+ const action=deliverySpec.type==='hemorrhage'?'withdrawn':deliverySpec.type==='pericardialDrain'?'drained':'infused';
+ $('delivery').textContent=`${state.intervention?'In progress':'Stopped / complete'} · ${fmt(actual,0)} / ${fmt(deliverySpec.volumeMl,0)} mL ${action}`;
  }
 }
 function makeBaseline(){
@@ -128,7 +129,7 @@ $('stop').addEventListener('click',()=>{model.stopIntervention();state=model.sna
 $('pv-pressure').addEventListener('change',draw);
 $('load').addEventListener('click',()=>{
  reset();const p=$('preset').value;
- if(p==='hemorrhage'){$('intervention').value='hemorrhage';$('volume').value=500;$('rate').value=10000/60;start('hemorrhage',500,10000/60);}
+ if(p==='hemorrhage'){$('intervention').value='hemorrhage';$('volume').value=500;$('rate').value=500;start('hemorrhage',500,500);}
  if(p==='tamponade200'||p==='tamponade400'){
    const target=p==='tamponade200'?200:400;
    $('intervention').value='pericardial';$('volume').value=target-state.effusionVolume;$('rate').value=200;
@@ -139,7 +140,7 @@ $('load').addEventListener('click',()=>{
 function updateQuestion(){const p=$('intervention').value;const tamponade=['pericardial','drainage'].includes(p);$('question-title').textContent=tamponade?'Pressure is not always preload':'Follow the pressure gradient';$('question').textContent=tamponade?'As pericardial pressure rises, what happens to measured filling pressure versus the pressure that distends the ventricle?':'How does a fall in circulating volume change Pms, venous return, and stroke volume?';}
 $('intervention').addEventListener('change',()=>{
  const pericardial=['pericardial','drainage'].includes($('intervention').value);
- $('volume').value=pericardial?200:500;$('rate').value=pericardial?200:10000/60;
+ $('volume').value=pericardial?200:500;$('rate').value=pericardial?200:($('intervention').value==='hemorrhage'?500:10000/60);
  updateQuestion();
 });
 $('export').addEventListener('click',()=>{if(!exportRows.length)return;const keys=Object.keys(exportRows[0]);const csv=keys.join(',')+'\n'+exportRows.map(row=>keys.map(k=>Number.isFinite(row[k])?row[k].toFixed(5):'').join(',')).join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');a.href=url;a.download='circulation-lab-experiment.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
