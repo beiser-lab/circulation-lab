@@ -18,6 +18,8 @@ Waveforms and PV loops come from integrated model states. The aortic dicrotic no
 
 The Guyton cardiac curve passes through the model’s measured right atrial pressure and cardiac output; its remaining shape is illustrative. At steady state the intersection agrees with output; during transients CO and venous return can differ. Filling pressures are intravascular; ventricular distending pressure also depends on external pericardial pressure.
 
+Resting teaching baseline: CO approximately 5 L/min, HR 70/min, MAP 88 mmHg, and Pra 5.2 mmHg. See the calibration report for the limited parameter adjustment and its effects on intervention outputs.
+
 ## Development
 
 Requires Node.js for tests and Python 3 for the local server.

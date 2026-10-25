@@ -4,7 +4,9 @@ Circulation Lab is an independent eight-compartment educational model. The calib
 
 ## Current calibration
 
-Resting values are approximately CO 5.48 L/min, HR 70/min, MAP 88 mmHg, mean Pra/CVP 4.93 mmHg, Pms 7.33 mmHg, LVEDP 6.28 mmHg, EDV 114.0 mL, and ESV 35.7 mL. Minimum resting intracavitary LV pressure is near zero (approximately +0.004 mmHg at the default integration step). This is a solver result, not a graphical zero clamp. Subatmospheric pressures remain possible during volume depletion and altered ventricular properties.
+Resting values are approximately CO 5.00 L/min, HR 70/min, MAP 88 mmHg, mean Pra/CVP 5.20 mmHg, Pms 7.47 mmHg, LVEDP 5.79 mmHg, EDV 111.2 mL, and ESV 39.8 mL. Minimum resting intracavitary LV pressure is approximately +0.11 mmHg at the default integration step. This is a solver result, not a graphical zero clamp. Subatmospheric pressures remain possible during volume depletion and altered ventricular properties.
+
+A limited teaching-baseline retuning changed three parameters: systemic resistance 0.8941 → 0.976, LV active linear coefficient 4.0293 → 3.6, and RV elastance 0.5802316 → 0.46. All other parameters and equations are unchanged. This targets CO near 5 L/min while retaining HR 70/min, MAP near 88 mmHg and Pra near 5 mmHg. CO is still computed from integrated ejection, not rescaled for display. Intervention outputs shift: active 1 L hemorrhage CO 5.70 → 5.24 L/min, active 2 L 2.52 → 2.36, 400 mL effusion 4.92 → 4.44, and 25% LV function 4.92 → 4.15. The latter also raises HR from about 107 to 119/min. All source comparison cases were rerun; this is not a full refit.
 
 The recalibration changes passive LV mechanics, RV active elastance, systemic volume/compliance/resistance parameters, and autonomic gains. It preserves pressure-driven flow, volume conservation, shared waveform/PV pressures, and same-beat CO = SV × HR / 1000. MAP remains the time average of the arterial waveform. Systemic venous return is measured independently and may differ from LV output during transients.
 
@@ -33,7 +35,7 @@ A1 = functionalFraction × autonomicContractility × baselineA1
 A2 = functionalFraction × autonomicContractility × baselineA2
 ```
 
-Vdmax = 10 mL and Vdmin = 5 mL follow the supplied help examples, not verified shipped reset defaults. The fitted coefficients remain baselineA1 = 4.0293 mmHg/mL and baselineA2 = −0.013 mmHg/mL². Function/contractility scale both coefficients, without changing the activation input or Vd at a given activation. The prior positive-factor guard and clamped active-volume difference are removed from this law. Its extrapolation is not asserted to be physiological outside the supported operating range.
+Vdmax = 10 mL and Vdmin = 5 mL follow the supplied help examples, not verified shipped reset defaults. The fitted coefficients remain baselineA1 = 3.6 mmHg/mL and baselineA2 = −0.013 mmHg/mL². Function/contractility scale both coefficients, without changing the activation input or Vd at a given activation. The prior positive-factor guard and clamped active-volume difference are removed from this law. Its extrapolation is not asserted to be physiological outside the supported operating range.
 
 The solver adds passive and active pressure, then external pressure once. The intrinsic `ventricularReferenceCurves()` API retains the recovered active-only peak-activation relation: at fixed tone, 50% function halves that active relation and its local slope exactly. The displayed **end-systolic PVR** instead evaluates the total active-plus-passive equation at the completed beat's aortic-valve closure, with the activation, coefficients, compliance, and external pressure captured at that event. The measured LVESP/LVESV is included exactly in the curve sampling grid, without a persistent marker on the plot. This is a beat-specific isochrone, not a load-independent ESPVR obtained from a family of preload-varied loops, and is a deliberate departure from the legacy active-only plotting convention. It can change with loading through closure timing and passive pressure; a 50% function change halves only the active contribution, not total pressure. The reference updates after a completed ejecting beat and is absent for a non-ejecting beat. Intracavitary and transmural modes use the same event and subtract its external pressure exactly once. The diastolic curve remains the passive relation with mean external pressure; the baseline overlay uses its separately simulated baseline state.
 
@@ -67,24 +69,24 @@ All 30 extracted PowerPoint intervention checkpoints and all 11 older-table rows
 
 Fitting uses the current 500 mL/min hemorrhage default and settled outputs. The full PowerPoint comparison uses 166.7 mL/min from the older lab protocol; actual PowerPoint delivery rates are unknown. Pericardial delivery is assumed 200 mL/min. Final values average ten seconds after at least two minutes of settling, with a second window after another minute. CO, HR, MAP, Pra and LVEDP convergence are checked. These results do not validate exact transient trajectories. Older no-sympathetic rows are additionally compared with both branches clamped because their HR is constant; their true vagal setting is undocumented.
 
-Across the 30 PowerPoint states, descriptive mean absolute differences from the pre-recalibration build to the current build (including the recovered active law) changed as follows:
+Across the 30 PowerPoint states, descriptive mean absolute differences before and after the limited 5 L/min baseline retuning are:
 
-| Measure | Previous | Recalibrated |
+| Measure | Before | Current |
 |---|---:|---:|
-| CO (L/min) | 0.251 | 0.267 |
-| HR (/min) | 7.62 | 7.50 |
-| MAP (mmHg) | 3.84 | 3.56 |
-| Pra/CVP (mmHg) | 0.67 | 0.55 |
-| LVEDP (mmHg) | 1.74 | 2.28 |
-| Pms (mmHg) | 1.71 | 1.30 |
-| EDV (mL) | 5.22 | 4.30 |
-| ESV (mL) | 2.92 | 5.07 |
+| CO (L/min) | 0.267 | 0.411 |
+| HR (/min) | 7.502 | 7.906 |
+| MAP (mmHg) | 3.563 | 4.056 |
+| Pra/CVP (mmHg) | 0.551 | 0.675 |
+| LVEDP (mmHg) | 2.276 | 2.120 |
+| Pms (mmHg) | 1.299 | 1.369 |
+| EDV (mL) | 4.300 | 5.230 |
+| ESV (mL) | 5.070 | 2.415 |
 
 Important remaining differences:
 
 - Moderate hemorrhage is somewhat overcompensated in CO; severe pulse-pressure narrowing can be greater than the older table.
 - At about 400 mL effusion, CO and HR remain too high relative to the screenshots, and the fall in MAP is too small. The direction of CO/MAP decline and Pra rise is preserved.
-- The moving active reference volume lowers baseline ESV by about 4.5 mL compared with the preceding calibration; average ESV error increases. Coefficients were retained rather than refitted to conceal this change.
+- Targeting the teaching baseline improves mean ESV agreement but worsens aggregate CO agreement with legacy observations, whose resting CO is higher.
 - Severe LV dysfunction raises filling pressure and chamber volumes, but the active-autonomic legacy LVEDP and MAP are not fully reproduced.
 - Correcting resting pressure worsens LVEDP residuals in some depleted-volume states. Negative pressure during marked depletion is not hidden.
 - Exercise, RV injury, dehydration-specific fluid redistribution, chronic remodeling and ischemic tissue injury remain unimplemented or unvalidated.
@@ -95,4 +97,4 @@ Pms and RVR derive from beat-averaged systemic compartment pressures and positiv
 
 Axes remain fixed: pressure −10 to 180 mmHg, PV volume 0 to 250 mL with 50 mL ticks, Guyton Pra −5 to 20 mmHg with 5 mmHg ticks, and flow 0 to 20 L/min. The time tracing spans ten seconds.
 
-`npm test` runs 39 checks covering conservation, numerical convergence, baseline pressure, hemorrhage and replacement, tamponade and drainage, LV function/compliance, independent clamping, same-beat identities, waveform MAP, notch and atrial features, and Guyton consistency. Near-zero pressure convergence uses a 0.01 mmHg absolute tolerance in addition to the relative criterion. Passing these checks establishes software/model consistency, not clinical validity.
+`npm test` runs 42 checks covering conservation, numerical convergence, baseline pressure, hemorrhage and replacement, tamponade and drainage, LV function/compliance, independent clamping, same-beat identities, waveform MAP, notch and atrial features, and Guyton consistency. Near-zero pressure convergence uses a 0.01 mmHg absolute tolerance in addition to the relative criterion. Passing these checks establishes software/model consistency, not clinical validity.

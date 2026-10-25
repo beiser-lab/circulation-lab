@@ -538,3 +538,10 @@ test('end-systolic reference uses closure external pressure during pericardial i
  close(intra.curve.find(p=>p.x===event.volume).y,event.pressure,1e-10,'closure pressure on curve');
  m.metrics.endSystole=null;assert.equal(m.endSystolicReference(),null,'no stale reference for non-ejecting beat');
 });
+
+test('teaching baseline produces 5 L/min through same-beat ejection at HR 70',()=>{
+ const m=new PhysiologyModel();m.advance(10);const s=m.snapshot();
+ close(s.co,5,.05,'baseline CO');close(s.vr,5,.05,'baseline venous return');
+ close(s.hr,70,.2,'baseline HR');close(s.map,88,1,'baseline MAP');
+ close(s.co,s.sv*s.hr/1000,1e-10,'output derives from ejected volume');
+});
