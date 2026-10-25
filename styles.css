@@ -12,3 +12,5 @@ header{border-top:6px solid #800000}h1{color:#800000}.brand-icon{border:1px soli
 .autonomic-readout{display:inline-flex;align-items:center;gap:8px}.autonomic-readout output{font-variant-numeric:tabular-nums;font-size:16px;min-width:36px}.autonomic-readout meter{width:65px;height:12px}@media(max-width:700px){.autonomic-selectors label{flex-wrap:wrap}}
 
 .feedback-panel{margin-top:24px;padding:20px;border:1px solid #ddd;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.feedback-panel h3{margin:0 0 8px}.feedback-panel p{font-size:12px;margin:0;color:#666}.feedback-panel nav{display:flex;gap:18px;flex-wrap:wrap}.feedback-panel a{color:#800000;font-size:13px;text-underline-offset:3px}.feedback-panel a:focus-visible{outline:2px solid #800000;outline-offset:5px}
+
+@media(min-width:1051px){[aria-labelledby="measure-group-0"] .metrics{grid-template-columns:repeat(5,minmax(0,1fr))}[aria-labelledby="measure-group-0"] .metric:nth-child(4n){border-right:1px solid #edf0f2}[aria-labelledby="measure-group-0"] .metric:last-child{border-right:0}}
