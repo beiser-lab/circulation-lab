@@ -411,3 +411,15 @@ test('severe hemorrhage remains stable when the integration timestep is halved',
  }
  const normal=run(.002),fine=run(.001);for(const k in normal)close(normal[k],fine[k],Math.max(.03,Math.abs(fine[k])*.02),`severe ${k} convergence`);
 });
+
+test('relative compliance moves the passive curve in the correct direction independently of 125 percent systolic function',()=>{
+ const m=new PhysiologyModel(),pressure=m.lvPressureVolume(120,0),active=m.lvPressureVolume(120,1)-pressure;
+ m.setLVFunction(1.25);close(m.lvPressureVolume(120,0),pressure,1e-12,'unchanged passive curve');close(m.lvPressureVolume(120,1)-pressure,active*1.25,1e-10,'increased active pressure');
+ for(const c of [1/3,.5,.75,1,1.25,1.5,2]){
+  m.setLVCompliance(c);const p=m.lvPressureVolume(120,0);
+  if(c>1)assert.ok(p<pressure);if(c<1)assert.ok(p>pressure);
+  close(m.snapshot().lvCompliance,c,1e-12,'reported compliance');
+  const blood=m.bloodVolume;m.advance(30);assert.equal(m.limit,null);close(m.bloodVolume,blood,1e-7,'conservation');
+ }
+ m.reset();assert.equal(m.snapshot().lvCompliance,1);assert.equal(m.lvFunction,1);
+});
