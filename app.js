@@ -1,21 +1,21 @@
-import { PhysiologyModel } from './model.js?v=guyton-11';
+import { PhysiologyModel } from './model.js?v=pra-12';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=guyton-11';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=pra-12';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
 const specs = [
  ['hr','HR','beats/min',0], ['sbp','SBP','mmHg',0], ['dbp','DBP','mmHg',0], ['map','MAP','mmHg',0], ['pulsePressure','Pulse pressure','mmHg',0],
- ['co','Cardiac output','L/min',2], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
+ ['co','Cardiac output','L/min',2], ['pra','Pra (mean)','mmHg',1], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
  ['pms','Pms','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
  ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
 ];
 const measureGroups = [
  {title:'Vital Signs',keys:['sbp','dbp','map','pulsePressure','hr']},
- {title:'Cardiac Measures',keys:['co','sv','edv','esv','lvedp','contractility','lvedpTransmural','meanPericardialPressure','effusionVolume']},
+ {title:'Cardiac Measures',keys:['co','sv','edv','esv','lvedp','pra','contractility','lvedpTransmural','meanPericardialPressure','effusionVolume']},
  {title:'Vascular Measures',keys:['vr','cvp','svr','pms','rvr','bloodVolume']}
 ];
-const selected = new Set(['sbp','dbp','map','pulsePressure','hr','co','sv','edv','esv','lvedp','contractility','vr','cvp','svr','pms','rvr']);
+const selected = new Set(['sbp','dbp','map','pulsePressure','hr','co','sv','edv','esv','lvedp','pra','contractility','vr','cvp','svr','pms','rvr']);
 let running = false, speed = 1, history = [], exportRows = [], baseline = [], baselineState, lastExport = -1;
 let state = model.snapshot(), previousFrame = performance.now(), drawDue = 0, deliverySpec = null;
 const colors = {arterial:'#800000',lv:'#a65e00',venous:'#155f83',grid:'#eaf0f2',text:'#666666'};
