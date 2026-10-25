@@ -423,3 +423,20 @@ test('relative compliance moves the passive curve in the correct direction indep
  }
  m.reset();assert.equal(m.snapshot().lvCompliance,1);assert.equal(m.lvFunction,1);
 });
+
+test('Guyton operating point matches displayed output after hemorrhage and other settled loading changes',()=>{
+ for(const scenario of ['baseline','hemorrhage','tamponade','lv']){
+  const m=new PhysiologyModel();
+  if(scenario==='hemorrhage')m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:500});
+  if(scenario==='tamponade')m.startIntervention({type:'pericardialInfusion',volumeMl:399,rateMlMin:200});
+  if(scenario==='lv')m.setLVFunction(.25);
+  m.advance(360);
+  for(let i=0;i<20;i++){
+   const s=m.advance(.1),g=s.guyton;
+   const atPra=g.cardiac.find(p=>p.x===s.cvp);assert.ok(atPra,'exact measured Pra is sampled');
+   close(atPra.y,s.co,1e-10,'curve anchor matches displayed CO');assert.ok(g.intersection);
+   close(g.intersection.y,s.co,.03,`${scenario} intersection flow`);
+   close(g.intersection.x,s.cvp,.03,`${scenario} intersection Pra`);
+  }
+ }
+});

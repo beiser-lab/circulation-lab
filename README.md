@@ -39,7 +39,7 @@ This repository contains only the independent web application and its tests. Ori
 
 ### Display conventions
 
-Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve remains illustrative; the marker is its intersection with the vascular curve.
+Playback is 1:1. MAP is waveform-averaged. CO, SV, and HR use the same completed beat; venous return is measured independently. Pms and RVR derive from systemic compartment parameters and beat-averaged pressures. The Guyton cardiac curve passes through current measured Pra and CO; its remaining shape is illustrative. The marker is its intersection with the vascular curve and agrees with measured flow at steady state.
 
 Pressure plots use −10–180 mmHg, LV volume 0–250 mL, and Guyton Pra -5–20 mmHg with flow 0–20 L/min. Curves outside these limits are clipped. Intracavitary LV pressure is shared by both plots; the optional transmural selector appears in pericardial experiments. PV references share the solver's pressure equations.
 
