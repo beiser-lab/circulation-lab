@@ -1,13 +1,13 @@
-import { PhysiologyModel } from './model.js?v=baseline-five-19';
+import { PhysiologyModel } from './model.js?v=equivalent-pms-20';
 
-import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=baseline-five-19';
+import {plotSample,pvPoints,GUYTON_PRA_MAX} from './plot-data.js?v=equivalent-pms-20';
 
 const $ = id => document.getElementById(id);
 const model = new PhysiologyModel();
 const specs = [
  ['hr','HR','beats/min',0], ['sbp','SBP','mmHg',0], ['dbp','DBP','mmHg',0], ['map','MAP','mmHg',0], ['pulsePressure','Pulse pressure','mmHg',0],
  ['co','Cardiac output','L/min',2], ['pra','Pra (mean)','mmHg',1], ['vr','Systemic venous return','L/min',2], ['cvp','Central venous pressure','mmHg',1], ['lvedp','LV end-diastolic pressure','mmHg',1], ['svr','Systemic vascular resistance','dyn·s·cm⁻⁵',0],
- ['pms','Pms','mmHg',1], ['rvr','Resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
+ ['pms','Pms','mmHg',1], ['rvr','Effective resistance to venous return','mmHg·min/L',2], ['contractility','LV contractility','mmHg/mL',2], ['meanPericardialPressure','Mean pericardial pressure','mmHg',1],
  ['lvedpTransmural','LVEDP − pericardial pressure','mmHg',1], ['lvesp','LV end-systolic pressure','mmHg',1], ['sv','Stroke volume','mL',1], ['edv','LV end-diastolic volume','mL',1], ['esv','LV end-systolic volume','mL',1], ['bloodVolume','Circulating blood volume','mL',0], ['effusionVolume','Pericardial fluid volume','mL',0]
 ];
 const measureGroups = [
@@ -42,7 +42,8 @@ function updateMetrics(){
  $('status').textContent=state.limit ? 'Model boundary reached' : running ? (speed===1?'Running · Real time (1×)':`Running · Accelerated (${speed}×)`) : 'Simulation paused';
  $('feedback-status').textContent=`Sympathetic feedback ${state.sympatheticFeedbackEnabled?'active':'clamped at current tone'} · Parasympathetic feedback ${state.vagalFeedbackEnabled?'active':'clamped at current tone'}.`;
  $('run').textContent=running?'Ⅱ Pause simulator':'▶ Start simulator';
- $('warning').hidden=!state.limit; $('warning').textContent=state.limit || '';
+ const warning=state.limit||(state.rvr===null?'Effective RVR and the venous-return curve are unavailable at this flow/pressure state.':'');
+ $('warning').hidden=!warning; $('warning').textContent=warning;
  if(deliverySpec){
  const actual = state.intervention?.deliveredMl ?? (deliverySpec.type==='hemorrhage' ? Math.max(0,state.removedBlood-deliverySpec.startRemoved) : deliverySpec.type==='bloodInfusion' ? Math.max(0,state.bloodVolume-deliverySpec.startBlood) : deliverySpec.type==='pericardialInfusion' ? Math.max(0,state.effusionVolume-deliverySpec.startEffusion) : Math.max(0,deliverySpec.startEffusion-state.effusionVolume));
  $('progress').value=Math.min(1,actual/deliverySpec.volumeMl);

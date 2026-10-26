@@ -2,7 +2,7 @@
  * Flow follows compartment pressure gradients; all traces use the same state.
  * This is not SimBioSys's engine and is not calibrated for patient prediction.
  */
-import {activeChamberPressure} from './cardiac-mechanics.js?v=baseline-five-19';
+import {activeChamberPressure} from './cardiac-mechanics.js?v=equivalent-pms-20';
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const BASE_V0=[10,15,700,2350,100,250,20,20];
 // Fitted to selected classroom checkpoints; see CALIBRATION.md for scope.
@@ -44,7 +44,7 @@ export class PhysiologyModel {
     this.v=[120,120,842,3050,175,410,80,110];
     this.lvFunction=1;this.lvStiffness=1;this.lvRelaxation=1;this.pericardiumIntact=true;
     this.time=0;this.phase=0;this.tone=0;this.vascularTone=0;this.vagalDrive=0;this.vagalEnabled=true;this.reflexEnabled=true;this.beatId=0;this.curveCache=null;
-    this.effusionVolume=1;this.removedBlood=0;this.intervention=null;this.limit=null;
+    this.fillingCache=null;this.effusionVolume=1;this.removedBlood=0;this.intervention=null;this.limit=null;
     this.metrics={sbp:120,dbp:80,map:93,co:5,cvp:4,lvedp:8};
     this.aorticValveOpen=false;this.aorticClosedThisBeat=false;this.aorticClosureTime=null;this.notchAmplitude=0;
     this.beat=this.newBeat();
@@ -149,6 +149,34 @@ export class PhysiologyModel {
     }
     return {diastolic,systolic};
   }
+  equivalentFillingState(){
+    const c=this.config,blood=this.bloodVolume,venousV0=this.parameters().v0[3];
+    // Zero-flow, fully relaxed eight-compartment reference. It uses total
+    // volume and passive properties, never the current volume distribution,
+    // heart rate, systolic function, or instantaneous chamber pressures.
+    const key=[blood.toFixed(6),venousV0,this.lvStiffness,this.effusionVolume,this.pericardiumIntact,c.systemicCompliance,c.lvAlpha,c.lvBeta,c.lvUnstressed,c.lvPassivePressureOffset,c.rvAlpha,c.rvBeta,c.rvUnstressed,c.pericardialBaseline,c.pericardialScale,c.pericardialCapacity,c.pericardialCompliance].join('|');
+    if(this.fillingCache?.key===key)return this.fillingCache.value;
+    const evaluate=transmural=>{
+      const z=(transmural-c.lvPassivePressureOffset)/c.lvAlpha;
+      const lv=Math.max(1,c.lvUnstressed+(z>0?Math.log1p(z):z)/(c.lvBeta*this.lvStiffness));
+      const rv=Math.max(1,c.rvUnstressed+Math.log1p(Math.max(Math.expm1(-8),transmural/c.rvAlpha))/c.rvBeta);
+      const ra=Math.max(1,20+18*transmural),la=Math.max(1,85+8*transmural);
+      const cardiacVolume=lv+rv+ra+la;
+      const external=c.pericardialBaseline+(this.pericardiumIntact?c.pericardialScale*Math.exp(clamp((cardiacVolume+this.effusionVolume-c.pericardialCapacity)/c.pericardialCompliance,-12,7)):0);
+      const pressure=transmural+external;
+      const volumes=[lv,rv,Math.max(1,700+1.5*pressure),Math.max(1,venousV0+c.systemicCompliance*pressure),Math.max(1,100+5*pressure),Math.max(1,250+22*pressure),ra,la];
+      return {pressure,volumes,totalVolume:volumes.reduce((a,b)=>a+b,0),externalPressure:external};
+    };
+    // Solve in cardiac transmural pressure so external pericardial pressure
+    // is self-consistent at the hypothetical equilibrium, not at the live beat.
+    let lo=-200,hi=200,result;
+    for(let i=0;i<60;i++){
+      const mid=(lo+hi)/2;result=evaluate(mid);
+      if(Math.abs(result.totalVolume-blood)<1e-7)break;
+      if(result.totalVolume<blood)lo=mid;else hi=mid;
+    }
+    this.fillingCache={key,value:result};return result;
+  }
   leftAtrialPressure(volume,lvPressure,aorticPressure,externalPressure){
     const distendingVolume=volume-85;
     const atrialActivation=this.phase>=.78&&this.phase<.98?Math.sin(Math.PI*(this.phase-.78)/.20)**2:0;
@@ -245,13 +273,13 @@ export class PhysiologyModel {
   }
   snapshot(){
     const p=this.pressures(),q=this.parameters(),m=this.metrics;
-    // Two systemic compliant reservoirs: the zero-flow filling pressure is
-    // the compliance-weighted mean arterial/venous pressure. The effective
-    // return resistance includes the arterial compliance fraction of SVR.
-    // Beat averages remove pulsatile redistribution without inventing negative RVR.
-    const c=this.config,ca=1.5,cv=c.systemicCompliance;
-    const pms=(ca*m.map+cv*m.meanSystemicVenousPressure)/(ca+cv);
-    const rvr=(q.rv+q.rs*ca/(ca+cv))/.06;
+    const pms=this.equivalentFillingState().pressure;
+    // The whole-circulation filling reference requires an effective RVR,
+    // distinct from the physical systemic vein-to-RA flow resistance. Derive
+    // it from measured venous return, never CO, to preserve transient imbalance.
+    const gradient=pms-m.cvp;
+    const rvr=gradient>1e-6&&m.vr>1e-4?gradient/m.vr:null;
+    const vascularReturnResistance=(q.rv+q.rs*1.5/(1.5+this.config.systemicCompliance))/.06;
     const venous=[],cardiac=[];
     // Anchor the illustrative curve to the same completed-beat Pra and CO
     // used by the numerical display. HR, inotropy and afterload affect this
@@ -265,7 +293,7 @@ export class PhysiologyModel {
     if(m.cvp>=-5&&m.cvp<=25)xs.push(m.cvp);
     xs.sort((a,b)=>a-b);
     for(const x of [...new Set(xs)]){
-      venous.push({x,y:(pms-x)/rvr});
+      if(rvr!==null)venous.push({x,y:(pms-x)/rvr});
       cardiac.push({x,y:capacity*shape(x)});
     }
     // Intersect the exact plotted line segments, not the pulsatile solver state.
@@ -274,8 +302,8 @@ export class PhysiologyModel {
       const a=venous[i-1].y-cardiac[i-1].y,b=venous[i].y-cardiac[i].y;
       if(a>=0&&b<=0){const f=a/(a-b||1);intersection={x:venous[i-1].x+f*(venous[i].x-venous[i-1].x),y:cardiac[i-1].y+f*(cardiac[i].y-cardiac[i-1].y)};break;}
     }
-    this.curveCache={venous,cardiac,intersection,label:'Cardiac curve is anchored to measured beat Pra and CO; its remaining shape is illustrative. Vascular curve uses systemic compartment parameters. Intersection agrees with output at steady state; transient CO and VR may differ.'};
-    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,pra:m.cvp,pulsePressure:m.sbp-m.dbp,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvCompliance:1/this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,
+    this.curveCache={venous,cardiac,intersection,label:'Cardiac curve is anchored to measured beat Pra and CO; its remaining shape is illustrative. Vascular curve uses equivalent filling pressure and effective RVR derived from measured venous return. Intersection agrees with output at steady state; transient CO and VR may differ.'};
+    return {aorticValveOpen:this.aorticValveOpen,aorticClosureTime:this.aorticClosureTime,aorticClosurePressure:this.aorticClosurePressure(),time:this.time,beatId:this.beatId,phase:this.phase,...m,pra:m.cvp,pulsePressure:m.sbp-m.dbp,hr:m.beatHR??this.hr,instantaneousHR:this.hr,lvFunction:this.lvFunction,lvStiffness:this.lvStiffness,lvCompliance:1/this.lvStiffness,lvRelaxation:this.lvRelaxation,lvRelaxationRate:this.lvRelaxation*(1+.5*this.tone),pericardiumIntact:this.pericardiumIntact,svr:m.co>.05?(m.map-m.cvp)/m.co*80:null,pms,rvr,vascularReturnResistance,
       contractility:this.config.lvElastance*q.cp*this.lvFunction,lvVolume:this.v[0],lvPressure:p[0],arterialPressure:p[2],raPressure:p[6],
       rvPressure:p[1],paPressure:p[4],laPressure:p[7],pericardialPressure:p[8],
       lvTransmuralPressure:p[0]-p[8],
