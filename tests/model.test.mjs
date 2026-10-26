@@ -51,11 +51,12 @@ function average(model, seconds = 10) {
 
 function checkFinite(snapshot) {
   for (const field of ['time', 'hr', 'sbp', 'dbp', 'map', 'co', 'cvp', 'lvedp',
-    'pms', 'rvr', 'contractility', 'lvVolume', 'lvPressure',
+    'pms', 'vascularReturnResistance', 'contractility', 'lvVolume', 'lvPressure',
     'arterialPressure', 'raPressure', 'pericardialPressure', 'bloodVolume',
     'effusionVolume', 'removedBlood']) {
     assert.ok(Number.isFinite(snapshot[field]), `${field} must remain finite`);
   }
+  assert.ok((Number.isFinite(snapshot.rvr)&&snapshot.rvr>0)||(snapshot.rvr===null&&(snapshot.vr<=1e-4||snapshot.pms-snapshot.pra<=1e-6)), 'effective RVR positive or explicitly unavailable outside forward-return domain');
   assert.ok(snapshot.bloodVolume >= 0, 'total blood volume must not be negative');
   assert.ok(snapshot.effusionVolume >= 0, 'effusion must not be negative');
   assert.ok(snapshot.lvVolume >= 0, 'LV volume must not be negative');
@@ -466,7 +467,8 @@ test('severe hemorrhage exhausts compensation without breaking beat identities a
  assert.ok(severe.co>1.8&&severe.co<2.8,'severe hemorrhage has markedly reduced output');
  assert.ok(severe.hr>170&&severe.hr<198,'tachycardia without hitting the HR ceiling');
  assert.ok(severe.map>40&&severe.map<58,'pressure no longer excessively preserved');
- assert.ok(severe.cvp<moderate.cvp);assert.ok(s.pms>s.cvp);assert.ok(s.rvr/base.rvr<1.25,'modest RVR change');
+ assert.ok(severe.cvp<moderate.cvp);assert.ok(s.pms>s.cvp);assert.ok(s.vascularReturnResistance/base.vascularReturnResistance<1.25,'physical systemic return resistance changes modestly');
+ close((s.pms-s.pra)/s.rvr,s.vr,1e-10,'effective resistance reconciles equivalent filling pressure with measured return');
  close(s.co,s.sv*s.hr/1000,1e-10,'severe beat identity');close(s.edv-s.esv,s.sv,.1,'severe PV width');
  close(s.bloodVolume,base.bloodVolume-2000,.001,'withdrawal mass balance');
  m.startIntervention({type:'bloodInfusion',volumeMl:2000,rateMlMin:1000});m.advance(420);
@@ -544,4 +546,47 @@ test('teaching baseline produces 5 L/min through same-beat ejection at HR 70',()
  close(s.co,5,.05,'baseline CO');close(s.vr,5,.05,'baseline venous return');
  close(s.hr,70,.2,'baseline HR');close(s.map,88,1,'baseline MAP');
  close(s.co,s.sv*s.hr/1000,1e-10,'output derives from ejected volume');
+});
+
+test('equivalent Pms conserves total volume and is invariant to isolated systolic function and flow',()=>{
+ const m=new PhysiologyModel();m.setSympatheticFeedback(false);m.setVagalFeedback(false);
+ const baseline=m.snapshot(),pms=baseline.pms;
+ for(const vagalActive of [false,true])for(const f of [.75,.5,.25,.1,1]){
+  m.setVagalFeedback(vagalActive);m.setLVFunction(f);m.advance(180);const s=m.snapshot();
+  close(s.pms,pms,1e-7,'clamped LV function cannot change filling pressure');
+  close(m.equivalentFillingState().totalVolume,s.bloodVolume,2e-6,'equilibrium volume conservation');
+  close((s.pms-s.pra)/s.rvr,s.vr,1e-10,'effective RVR uses measured return');
+ }
+ // Change physical flow resistance without changing vascular capacity.
+ m.config.systemicResistance*=1.2;m.advance(120);
+ close(m.snapshot().pms,pms,1e-7,'resistance alone does not change filling pressure');
+});
+
+test('equivalent Pms responds to volume and sympathetic recruitment but not vagal drive',()=>{
+ const m=new PhysiologyModel();m.setSympatheticFeedback(false);const baseline=m.snapshot();
+ m.startIntervention({type:'hemorrhage',volumeMl:1000,rateMlMin:500});m.advance(240);
+ const depleted=m.snapshot();assert.ok(depleted.pms<baseline.pms);assert.notEqual(m.vagalDrive,0);
+ const pms=depleted.pms;m.vagalDrive=.8;close(m.snapshot().pms,pms,1e-9,'vagal chronotropy has no vascular capacity effect');
+ m.startIntervention({type:'bloodInfusion',volumeMl:1000,rateMlMin:500});m.advance(240);
+ close(m.snapshot().pms,baseline.pms,1e-7,'restored volume restores Pms at clamped sympathetic tone');
+ const active=new PhysiologyModel(),before=active.snapshot();active.setLVFunction(.25);active.advance(240);
+ assert.ok(active.snapshot().pms>before.pms,'reflex sympathetic recruitment raises filling pressure');
+});
+
+test('equivalent filling pressure uses passive properties and pericardial constraint, not live chamber volumes',()=>{
+ const m=new PhysiologyModel();const before=m.snapshot().pms;
+ m.v[0]+=100;m.v[3]-=100;close(m.snapshot().pms,before,1e-9,'redistribution alone has no effect');
+ m.setLVCompliance(.5);assert.ok(m.snapshot().pms>before,'lower passive compliance raises equivalent pressure');
+ m.setLVCompliance(1);m.effusionVolume=400;const constrained=m.snapshot().pms;
+ assert.ok(constrained>before);m.setPericardium(false);assert.ok(m.snapshot().pms<constrained);
+ m.reset();close(m.snapshot().pms,before,1e-9,'reset clears reference cache');
+});
+
+test('Guyton curve uses equivalent Pms intercept and measured VR during transients',()=>{
+ const m=new PhysiologyModel();m.setLVFunction(.1);m.advance(2);const s=m.snapshot();
+ assert.ok(Math.abs(s.co-s.vr)>.1,'test exercises unequal transient flows');
+ close((s.pms-s.pra)/s.rvr,s.vr,1e-10,'VR is not forced to CO');
+ const v=s.guyton.venous,i=v.findIndex(p=>p.x>=s.pms),a=v[i-1],b=v[i];
+ close(a.y+(b.y-a.y)*(s.pms-a.x)/(b.x-a.x),0,1e-10,'venous zero-flow intercept equals displayed Pms');
+ m.metrics.vr=0;const noFlow=m.snapshot();assert.equal(noFlow.rvr,null);assert.deepEqual(noFlow.guyton.venous,[]);assert.equal(noFlow.guyton.intersection,null);
 });
