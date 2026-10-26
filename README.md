@@ -40,7 +40,7 @@ git subtree push --prefix dist origin gh-pages
 
 ## Design
 
-Phoenix Maroon (#800000), white, and greys follow the UChicago primary color palette referenced by Pritzker's identity guidance. Graph traces use additional contrasting colors. No university logo assets are included.
+Phoenix Maroon (#800000), white, and greys follow the UChicago primary color palette referenced by Pritzker's identity guidance. Graph traces use additional contrasting colors. The header uses the unmodified maroon outlined phoenix from [UChicago Creative’s official identity assets](https://creative.uchicago.edu/logos-and-identity-elements/), stored locally for reliable loading. The university mark remains the property of the University of Chicago.
 
 - https://creative.uchicago.edu/color-system/
 - https://pritzker.uchicago.edu/resources/pritzker-identity-guidelines
